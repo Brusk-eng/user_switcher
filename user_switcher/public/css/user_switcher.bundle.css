@@ -92,6 +92,7 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	position: relative;
 	overflow: hidden;
 	font-size: 11px;
 	font-weight: 600;
@@ -101,6 +102,8 @@
 }
 
 #us-floating-container .us-avatar img {
+	position: absolute;
+	inset: 0;
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
@@ -218,7 +221,7 @@
 	position: absolute;
 	right: 0;
 	bottom: 54px;
-	width: 340px;
+	width: 380px;
 	max-width: calc(100vw - 40px);
 	max-height: min(560px, calc(100vh - 100px));
 	display: flex;
@@ -303,8 +306,8 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	flex-shrink: 0;
 	color: var(--us-muted);
-	align-self: flex-start;
 }
 
 #us-floating-container .us-icon-btn:hover {
@@ -381,15 +384,17 @@
 /* Filter chips */
 #us-floating-container .us-filters {
 	display: flex;
+	align-items: center;
 	gap: 4px;
 	padding: 0 12px 8px;
 	border-bottom: 1px solid var(--us-border);
 }
 
 #us-floating-container .us-filter {
-	padding: 4px 10px;
+	padding: 5px 10px;
 	border-radius: 999px;
 	font-size: 12px;
+	line-height: 1.2;
 	color: var(--us-muted);
 	transition: background 0.15s, color 0.15s;
 }
@@ -464,9 +469,10 @@
 
 #us-floating-container .us-roles {
 	display: flex;
+	min-width: 0;
 	gap: 4px;
 	flex-shrink: 0;
-	max-width: 45%;
+	max-width: 34%;
 	overflow: hidden;
 }
 
@@ -543,17 +549,18 @@
 	background: transparent;
 }
 
-#us-floating-container .us-hint-back {
+#us-floating-container .us-hints > .us-hint-back {
 	display: none;
 }
 
-#us-floating-container.us-can-go-back .us-hint-back {
-	display: inline;
+#us-floating-container.us-can-go-back .us-hints > .us-hint-back {
+	display: inline-flex;
 }
 
 /* Skeleton */
 #us-floating-container .us-skeleton {
 	cursor: default;
+	padding-left: 36px;
 }
 
 #us-floating-container .us-skeleton .us-avatar,
@@ -600,12 +607,16 @@
 
 #us-floating-container .us-hints {
 	display: flex;
+	align-items: center;
 	gap: 10px;
 }
 
-#us-floating-container .us-hints kbd {
-	margin-right: 2px;
+#us-floating-container .us-hints > span {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
 }
+
 
 #us-floating-container .us-hide {
 	margin-left: auto;
@@ -700,6 +711,7 @@
 	padding: 4px 8px;
 	border-radius: 999px;
 	font-size: 12px;
+	line-height: 1.2;
 	color: var(--us-muted);
 	border: 1px dashed var(--us-border);
 }
@@ -794,24 +806,6 @@
 	box-shadow: 0 0 0 3px var(--us-hover);
 }
 
-#us-floating-container .us-selected-roles {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 4px;
-}
-
-#us-floating-container .us-selected-roles:empty {
-	display: none;
-}
-
-#us-floating-container .us-chip--removable {
-	cursor: pointer;
-}
-
-#us-floating-container .us-chip--removable:hover {
-	border-color: var(--us-muted);
-}
-
 #us-floating-container .us-role-list {
 	max-height: 150px;
 	overflow-y: auto;
@@ -838,9 +832,29 @@
 	background: var(--us-hover);
 }
 
-#us-floating-container .us-role input {
+/* Own checkbox: Frappe's global input[type=checkbox] styling can hide the checked state */
+#us-floating-container .us-role input[type="checkbox"] {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 15px;
+	height: 15px;
 	margin: 0;
-	accent-color: var(--us-accent);
+	flex-shrink: 0;
+	border: 1.5px solid var(--us-muted);
+	border-radius: 4px;
+	background: var(--us-bg) center / 11px no-repeat;
+	box-shadow: none;
+	cursor: pointer;
+}
+
+#us-floating-container .us-role input[type="checkbox"]:checked {
+	background-color: var(--us-accent);
+	border-color: var(--us-accent);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] #us-floating-container .us-role input[type="checkbox"]:checked {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23171717' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E");
 }
 
 #us-floating-container .us-role .us-chip {

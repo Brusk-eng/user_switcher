@@ -84,10 +84,9 @@
 	}
 
 	function avatar(u, cls = "") {
-		if (u.user_image) {
-			return `<span class="us-avatar ${cls}"><img src="${esc(u.user_image)}" alt=""></span>`;
-		}
-		return `<span class="us-avatar ${cls}" style="--us-hue:${hue(u.name)}">${esc(initials(u))}</span>`;
+		// Initials sit underneath; a broken image removes itself and reveals them
+		const img = u.user_image ? `<img src="${esc(u.user_image)}" alt="" onerror="this.remove()">` : "";
+		return `<span class="us-avatar ${cls}" style="--us-hue:${hue(u.name)}">${esc(initials(u))}${img}</span>`;
 	}
 
 	function display_name(u) {
@@ -305,7 +304,7 @@
 						</label>
 						<label class="us-field">
 							<span>${t("Email")}</span>
-							<input name="email" type="email" placeholder="test.priya@example.com" required>
+							<input name="email" type="email" placeholder="priya.accounts@example.com" required>
 						</label>
 						<div class="us-field">
 							<span class="us-field-row">
@@ -313,8 +312,7 @@
 								<span class="us-type-hint"></span>
 							</span>
 							<input class="us-role-search" type="text" placeholder="${t("Filter roles")}">
-							<div class="us-selected-roles"></div>
-							<div class="us-role-list"><div class="us-empty">${t("Loading roles...")}</div></div>
+								<div class="us-role-list"><div class="us-empty">${t("Loading roles...")}</div></div>
 						</div>
 						<div class="us-create-actions">
 							<button type="button" class="us-btn us-create-only">${t("Create")}</button>
@@ -653,10 +651,11 @@
 		$name.on("input", () => {
 			if (!email_touched) {
 				const s = slug($name.val());
-				$email.val(s ? `test.${s}@example.com` : "");
+				$email.val(s ? `${s}@example.com` : "");
 			}
 		});
-		$email.on("input", () => (email_touched = true));
+		// Clearing the email hands control back to auto-fill
+		$email.on("input", () => (email_touched = $email.val() !== ""));
 		$role_search.on("input", paint_roles);
 		// Enter in the role filter should not submit the form
 		$role_search.on("keydown", (e) => {
@@ -700,15 +699,6 @@
 
 		function paint_picked() {
 			const picked = [...state.picked];
-			$create.find(".us-selected-roles").html(
-				picked
-					.map((r) => `<span class="us-chip us-chip--strong us-chip--removable" data-role="${esc(r)}">${esc(r)} ×</span>`)
-					.join("")
-			);
-			$create.find(".us-chip--removable").on("click", function () {
-				state.picked.delete($(this).attr("data-role"));
-				paint_roles();
-			});
 			// Frappe derives the user type from the roles: any desk-access role makes a System User
 			const desk = picked.some((r) => state.roles?.find((x) => x.name === r)?.desk_access);
 			$create
