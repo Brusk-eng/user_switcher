@@ -28,6 +28,7 @@
 		chevron_right: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`,
 		chevron_left: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>`,
 		shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>`,
+		info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5h.01"/></svg>`,
 		eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`,
 	};
 
@@ -268,6 +269,30 @@
 
 	// ---------- the widget ----------
 
+	// ---------- "How to use" guide (shown from the (i) button next to Hide) ----------
+
+	function info_html() {
+		const kbd = (k) => `<kbd>${k}</kbd>`;
+		const item = (icon, title, text) =>
+			`<div class="us-info-item"><span class="us-info-icon">${ICONS[icon]}</span><div><b>${title}</b><p>${text}</p></div></div>`;
+		return `
+			<p class="us-info-lead">${t("See the app exactly as another user sees it. Pick a user and you are logged in as them. Go back anytime with one click.")}</p>
+			${item("swap", t("Switch to a user"), t("Click a user, or press its number {0} to {1}. Type in the search box to find someone by name or email.", [kbd(1), kbd(9)]))}
+			${item("back", t("Come back to your own account"), t("Press {0}, click “Back to …” at the top, or press {1} on any page.", [kbd(0), kbd(BACK_SHORTCUT_LABEL)]))}
+			${item("star", t("Favourites (pinned users)"), t("Click the star on a user to pin them at the top. Pinned users keep their numbers, even after you switch. Drag a pinned user up or down to change the order. Users you switch to often also show under Most used."))}
+			${item("shield", t("Manage roles"), t("Click Manage roles at the top to give or remove roles (access) for the user you are viewing as. Tick the roles, then press Save roles."))}
+			${item("plus", t("Create a test user"), t("Click + Test user, type a name, tick the roles and create. You can switch into the new user right away."))}
+			${item("eye", t("Hide the button"), t("Click Hide to remove the button until your next login. Press {0} to bring it back.", [kbd(SHORTCUT_LABEL)]))}
+			<div class="us-info-keys">
+				<span>${kbd(SHORTCUT_LABEL)} ${t("open or close")}</span>
+				<span>${kbd("↑")}${kbd("↓")}${kbd("↵")} ${t("move and pick")}</span>
+				<span>${kbd("Esc")} ${t("close")}</span>
+				<span>${kbd("Ctrl+K")} ${t("then type")} <i>su jane</i></span>
+			</div>
+			${item("info", t("Good to know"), t("It works only when developer mode is on. Every switch is saved in the User Switch Log. Do not use it on a live site."))}
+		`;
+	}
+
 	function render_widget() {
 		if ($("#us-floating-container").length) return;
 
@@ -324,13 +349,24 @@
 						</div>
 					</form>
 
+					<div class="us-info">
+						<div class="us-create-head">
+							<button type="button" class="us-icon-btn us-info-back" aria-label="${t("Back")}">${ICONS.chevron_left}</button>
+							<span class="us-create-titles"><span class="us-create-title">${t("How to use User Switcher")}</span></span>
+						</div>
+						${info_html()}
+					</div>
+
 					<div class="us-footer">
 						<span class="us-hints">
 							<span><kbd>1</kbd>–<kbd>9</kbd> ${t("switch")}</span>
 							<span class="us-hint-back" title="${t("{0} from any page", [BACK_SHORTCUT_LABEL])}"><kbd>0</kbd> ${t("back")}</span>
 							<span><kbd>↑</kbd><kbd>↓</kbd><kbd>↵</kbd></span>
 						</span>
-						<button class="us-hide" title="${t("Hide until next session ({0} to reopen)", [SHORTCUT_LABEL])}">${t("Hide")}</button>
+						<span class="us-footer-actions">
+							<button class="us-info-btn" title="${t("How to use")}" aria-label="${t("How to use")}" aria-pressed="false">${ICONS.info}</button>
+							<button class="us-hide" title="${t("Hide until next session ({0} to reopen)", [SHORTCUT_LABEL])}">${t("Hide")}</button>
+						</span>
 					</div>
 				</div>
 				<button class="us-trigger" aria-label="${t("Switch user")}" aria-expanded="false">
@@ -347,7 +383,7 @@
 		const $identity = $root.find(".us-identity");
 		const $search = $root.find(".us-search input");
 		const $create = $root.find(".us-create");
-		const state = { ctx: null, user_type: "", txt: "", request_id: 0, creating: false, editing: null, roles: null, picked: new Set() };
+		const state = { ctx: null, user_type: "", txt: "", request_id: 0, creating: false, info: false, editing: null, roles: null, picked: new Set() };
 		let search_timer;
 
 		if (storage(sessionStorage, HIDDEN_KEY) === "1") $root.addClass("us-hidden");
@@ -368,8 +404,21 @@
 			if (!state.creating) setTimeout(() => $search.trigger("focus").trigger("select"), 60);
 		}
 
+		function show_info(on) {
+			if (on && state.creating) show_create(false);
+			state.info = on;
+			$root.toggleClass("us-info-mode", on);
+			$root.find(".us-info-btn").toggleClass("is-on", on).attr("aria-pressed", on);
+			if (on) $root.find(".us-info").scrollTop(0);
+			else $search.trigger("focus");
+		}
+
+		$root.find(".us-info-btn").on("click", () => show_info(!state.info));
+		$root.find(".us-info-back").on("click", () => show_info(false));
+
 		function close() {
-			$root.removeClass("us-open");
+			state.info = false;
+			$root.removeClass("us-open us-info-mode").find(".us-info-btn").removeClass("is-on").attr("aria-pressed", false);
 			$card.attr("aria-hidden", "true");
 			$trigger.attr("aria-expanded", "false");
 		}
@@ -403,14 +452,15 @@
 			if (!is_open()) return;
 
 			if (e.key === "Escape") {
-				if (state.creating) show_create(false);
+				if (state.info) show_info(false);
+				else if (state.creating) show_create(false);
 				else {
 					close();
 					$trigger.trigger("focus");
 				}
 				return;
 			}
-			if (state.creating) return; // let the form have every other key
+			if (state.creating || state.info) return; // let the form have every other key
 
 			// 1-9 switch to the numbered user, 0 goes back. Only while the search box is
 			// empty, so digits can still be typed to search once a query is started.
@@ -753,6 +803,7 @@
 		function show_create(on) {
 			state.creating = on;
 			state.editing = null;
+			if (on && state.info) show_info(false);
 			$root.toggleClass("us-creating", on).removeClass("us-roles-mode");
 			$create.find(".us-create-title").text(t("New test user"));
 			$create.find(".us-create-sub").text("");
