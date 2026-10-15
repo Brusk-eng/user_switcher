@@ -603,14 +603,14 @@
 			const title = uses ? t("Switched {0} times", [uses]) : "";
 			const $item = $(`
 				<div class="us-item" role="option" tabindex="-1" title="${esc(title)}">
+					${drag ? `<span class="us-grip" title="${t("Drag to reorder")}">${ICONS.grip}</span>` : `<span class="us-grip us-grip--off"></span>`}
 					${key}
-					${drag ? `<span class="us-grip" title="${t("Drag to reorder")}">${ICONS.grip}</span>` : ""}
 					${avatar(u)}
 					<div class="us-item-text">
-						<span class="us-item-name">${esc(display_name(u))} ${website}</span>
+						<span class="us-item-name"><span class="us-item-name-text">${esc(display_name(u))}</span>${website}</span>
 						<span class="us-item-email">${esc(u.name)}</span>
 					</div>
-					${role_chips(u.roles)}
+					${role_chips(u.roles) || `<span class="us-roles"></span>`}
 					<button class="us-pin ${pinned ? "is-pinned" : ""}" title="${pinned ? t("Unpin") : t("Pin to top")}"
 						aria-label="${pinned ? t("Unpin") : t("Pin to top")}" aria-pressed="${pinned}">${ICONS.star}</button>
 					<span class="us-enter">${ICONS.enter}</span>
