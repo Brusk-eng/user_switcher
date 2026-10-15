@@ -513,12 +513,16 @@
 			}
 		}
 
-		$list
-			.on("dragover", (e) => {
+		// The whole card accepts the drag, and dragenter must be accepted too: the browser picks the
+		// cursor from dragenter, so accepting only dragover on the list flashes the red "no drop" sign
+		// every time the pointer crosses into another element (or sits over the search box, header, footer).
+		// Releasing outside the card still cancels.
+		$card
+			.on("dragenter dragover", (e) => {
 				if (!state.drag_name) return;
 				e.preventDefault();
 				e.originalEvent.dataTransfer.dropEffect = "move";
-				move_dragged(e.originalEvent.clientY);
+				if (e.type === "dragover") move_dragged(e.originalEvent.clientY);
 			})
 			.on("drop", (e) => {
 				if (!state.drag_name) return;
