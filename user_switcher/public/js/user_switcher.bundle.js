@@ -731,17 +731,19 @@
 			if (!state.roles) return;
 			const q = $role_search.val().trim().toLowerCase();
 			const rows = state.roles.filter((r) => !q || r.name.toLowerCase().includes(q));
+			const row_html = (r) => `<label class="us-role">
+				<input type="checkbox" value="${esc(r.name)}" ${state.picked.has(r.name) ? "checked" : ""}>
+				<span>${esc(r.name)}</span>
+				${r.desk_access ? "" : `<span class="us-chip us-chip--web">${t("Portal")}</span>`}
+			</label>`;
+			// Editing: roles the user already has go first (by the saved set, so rows don't jump while ticking)
+			const current = state.editing ? rows.filter((r) => state.original.has(r.name)) : [];
+			const others = state.editing ? rows.filter((r) => !state.original.has(r.name)) : rows;
+			const group = (title, list) => (list.length && current.length ? `<div class="us-group">${title}</div>` : "") + list.map(row_html).join("");
 			$role_list.html(
 				rows.length
-					? rows
-							.map(
-								(r) => `<label class="us-role">
-									<input type="checkbox" value="${esc(r.name)}" ${state.picked.has(r.name) ? "checked" : ""}>
-									<span>${esc(r.name)}</span>
-									${r.desk_access ? "" : `<span class="us-chip us-chip--web">${t("Portal")}</span>`}
-								</label>`
-							)
-							.join("")
+					? (current.length ? `<div class="us-group">${t("Current roles ({0})", [current.length])}</div>` + current.map(row_html).join("") : "") +
+							group(t("Other roles"), others)
 					: `<div class="us-empty">${t("No roles match")}</div>`
 			);
 			$role_list.find("input").on("change", function () {
