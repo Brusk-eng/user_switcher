@@ -15,7 +15,6 @@
 	// Straight back to the account you logged in with (Administrator, usually), from any page
 	const BACK_SHORTCUT_LABEL = "Ctrl+Shift+A";
 	const is_back_shortcut = (e) => (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.code === "KeyA";
-	const HIGHLIGHT_ROLES = ["System Manager", "Accounts Manager", "HR Manager", "Sales Manager", "Stock Manager"];
 
 	const ICONS = {
 		swap: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></svg>`,
@@ -94,20 +93,6 @@
 
 	function display_name(u) {
 		return u?.full_name || u?.name || "";
-	}
-
-	function role_chips(roles) {
-		if (!roles?.length) return "";
-		const sorted = [...roles].sort(
-			(a, b) => (HIGHLIGHT_ROLES.includes(b) ? 1 : 0) - (HIGHLIGHT_ROLES.includes(a) ? 1 : 0)
-		);
-		const more = sorted.length - 1;
-		return (
-			`<span class="us-roles" title="${esc(roles.join(", "))}">` +
-			`<span class="us-chip ${HIGHLIGHT_ROLES.includes(sorted[0]) ? "us-chip--strong" : ""}">${esc(sorted[0])}</span>` +
-			(more > 0 ? `<span class="us-chip us-chip--more">+${more}</span>` : "") +
-			`</span>`
-		);
 	}
 
 	function slug(s) {
@@ -687,7 +672,6 @@
 						<span class="us-item-name"><span class="us-item-name-text">${esc(display_name(u))}</span>${website}</span>
 						<span class="us-item-email">${esc(u.name)}</span>
 					</div>
-					${role_chips(u.roles) || `<span class="us-roles"></span>`}
 					<button class="us-pin ${pinned ? "is-pinned" : ""}" title="${pinned ? t("Unpin") : t("Pin to top")}"
 						aria-label="${pinned ? t("Unpin") : t("Pin to top")}" aria-pressed="${pinned}">${ICONS.star}</button>
 					<span class="us-enter">${ICONS.enter}</span>
