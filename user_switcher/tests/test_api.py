@@ -67,3 +67,38 @@ class TestBlockedTargets(IntegrationTestCase):
 
 		frappe.utils.password.update_password("us_sm_b@example.com", "Str0ng!Pass#2026")
 		self.assertIn("us_sm_b@example.com", api._blocked_targets("us_sm_a@example.com"))
+
+
+class TestManageRoles(IntegrationTestCase):
+	def setUp(self):
+		frappe.set_user("Administrator")
+		self.conf = patch.object(frappe.local, "conf", frappe._dict(developer_mode=1))
+		self.conf.start()
+		self.addCleanup(self.conf.stop)
+
+	def _user(self, email, roles=()):
+		return frappe.get_doc(
+			{"doctype": "User", "email": email, "first_name": "R", "send_welcome_email": 0,
+			 "roles": [{"role": r} for r in roles]}
+		).insert().name
+
+	def test_add_and_remove_roles(self):
+		user = self._user("us_roles_t@example.com", ["Website Manager"])
+		self.assertEqual(api.get_user_roles(user), ["Website Manager"])
+
+		api.set_user_roles(user, ["Newsletter Manager"])
+		self.assertEqual(api.get_user_roles(user), ["Newsletter Manager"])
+
+		api.set_user_roles(user, '["Website Manager", "Newsletter Manager", "All"]')
+		self.assertEqual(api.get_user_roles(user), ["Newsletter Manager", "Website Manager"])
+
+	def test_administrator_and_guest_not_editable(self):
+		for user in ("Administrator", "Guest"):
+			self.assertRaises(frappe.ValidationError, api.set_user_roles, user, ["Website Manager"])
+
+	def test_cannot_drop_own_system_manager(self):
+		user = self._user("us_roles_sm@example.com", ["System Manager", "Website Manager"])
+		with patch.object(api, "_real_user", return_value=user):
+			self.assertRaises(frappe.ValidationError, api.set_user_roles, user, ["Website Manager"])
+			api.set_user_roles(user, ["System Manager"])
+		self.assertEqual(api.get_user_roles(user), ["System Manager"])

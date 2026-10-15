@@ -899,6 +899,22 @@
 	pointer-events: none;
 }
 
+/* Roles mode reuses the create form: no name/email, Save instead of Create */
+#us-floating-container .us-roles-save,
+#us-floating-container.us-roles-mode .us-create-fields,
+#us-floating-container.us-roles-mode .us-create-only,
+#us-floating-container.us-roles-mode .us-create-actions [type="submit"] {
+	display: none;
+}
+
+#us-floating-container.us-roles-mode .us-roles-save {
+	display: inline-block;
+}
+
+#us-floating-container.us-roles-mode .us-role-list {
+	max-height: 260px;
+}
+
 /* ---------- Switched banner (every page) ---------- */
 
 #us-banner {

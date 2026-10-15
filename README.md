@@ -120,6 +120,14 @@ These results appear alongside Frappe's own. A plain name search (`jane`) also o
 
 Test users get no welcome email. Their bio says *"Test user created with User Switcher by …"*, so they're easy to find and clean up later.
 
+### Managing roles
+
+1. Open the switcher and click the shield icon next to the name at the top. It edits the user you are signed in as (or viewing as).
+2. Tick or untick roles, for example **HR Manager**, then click **Save roles**.
+3. The page reloads so the new roles apply.
+
+You can't edit Administrator, Guest or other System Managers, and you can't remove System Manager from your own account. Roles are saved on the User, so the change shows in its Version history.
+
 ---
 
 ## Keyboard shortcuts
@@ -219,6 +227,8 @@ All methods live in `user_switcher.api` and require the caller's **real** user t
 | `switch_to_user` | POST | `target_user` | `{current_user}`. Sets the new session cookie. |
 | `switch_back` | POST | none | Same as `switch_to_user(<real user>)` |
 | `get_assignable_roles` | GET | none | `[{name, desk_access}]` |
+| `get_user_roles` | GET | `user` | `["Role", ...]` (automatic roles left out) |
+| `set_user_roles` | POST | `user`, `roles` (list or JSON) | `{name, user_type, roles}` |
 | `create_test_user` | POST | `full_name`, `email`, `roles` (list or JSON), `switch=1` | `{name, full_name, user_type, roles}` |
 
 Example:

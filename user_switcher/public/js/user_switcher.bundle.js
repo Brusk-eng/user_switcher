@@ -26,6 +26,7 @@
 		star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>`,
 		plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
 		chevron_left: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>`,
+		shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>`,
 		eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`,
 	};
 
@@ -296,13 +297,13 @@
 					<form class="us-create" autocomplete="off" novalidate>
 						<div class="us-create-head">
 							<button type="button" class="us-icon-btn us-create-cancel" aria-label="${t("Back")}">${ICONS.chevron_left}</button>
-							<span>${t("New test user")}</span>
+							<span class="us-create-title">${t("New test user")}</span>
 						</div>
-						<label class="us-field">
+						<label class="us-field us-create-fields">
 							<span>${t("Full name")}</span>
 							<input name="full_name" type="text" placeholder="${t("e.g. Priya Accounts")}" required>
 						</label>
-						<label class="us-field">
+						<label class="us-field us-create-fields">
 							<span>${t("Email")}</span>
 							<input name="email" type="email" placeholder="priya.accounts@example.com" required>
 						</label>
@@ -317,6 +318,7 @@
 						<div class="us-create-actions">
 							<button type="button" class="us-btn us-create-only">${t("Create")}</button>
 							<button type="submit" class="us-btn us-btn--primary">${t("Create & switch")}</button>
+							<button type="button" class="us-btn us-btn--primary us-roles-save">${t("Save roles")}</button>
 						</div>
 					</form>
 
@@ -343,7 +345,7 @@
 		const $identity = $root.find(".us-identity");
 		const $search = $root.find(".us-search input");
 		const $create = $root.find(".us-create");
-		const state = { ctx: null, user_type: "", txt: "", request_id: 0, creating: false, roles: null, picked: new Set() };
+		const state = { ctx: null, user_type: "", txt: "", request_id: 0, creating: false, editing: null, roles: null, picked: new Set() };
 		let search_timer;
 
 		if (storage(sessionStorage, HIDDEN_KEY) === "1") $root.addClass("us-hidden");
@@ -494,6 +496,7 @@
 						<span class="us-identity-name">${esc(display_name(me))}</span>
 						<span class="us-identity-email">${esc(me.name)}</span>
 					</div>
+					<button class="us-icon-btn us-edit-roles" title="${t("Manage roles")}" aria-label="${t("Manage roles")}">${ICONS.shield}</button>
 					<button class="us-icon-btn us-close" aria-label="${t("Close")}">${ICONS.close}</button>
 				</div>
 				${
@@ -507,6 +510,7 @@
 				}
 			`);
 			$identity.find(".us-close").on("click", close);
+			$identity.find(".us-edit-roles").on("click", () => show_roles(me));
 			$identity.find(".us-switch-back").on("click", switch_back);
 		}
 
@@ -634,7 +638,9 @@
 
 		function show_create(on) {
 			state.creating = on;
-			$root.toggleClass("us-creating", on);
+			state.editing = null;
+			$root.toggleClass("us-creating", on).removeClass("us-roles-mode");
+			$create.find(".us-create-title").text(t("New test user"));
 			if (!on) {
 				$search.trigger("focus");
 				return;
@@ -647,6 +653,35 @@
 			setTimeout(() => $name.trigger("focus"), 30);
 			load_roles();
 		}
+
+		// ---------- manage roles of the signed-in user ----------
+
+		function show_roles(user) {
+			show_create(true);
+			state.editing = user.name;
+			$root.addClass("us-roles-mode");
+			$create.find(".us-create-title").text(t("Roles for {0}", [display_name(user)]));
+			frappe.call({ method: `${API}.get_user_roles`, args: { user: user.name }, type: "GET" }).then((r) => {
+				state.picked = new Set(r.message || []);
+				load_roles();
+			});
+		}
+
+		$create.find(".us-roles-save").on("click", () => {
+			const $buttons = $create.find(".us-btn").prop("disabled", true);
+			frappe
+				.call({
+					method: `${API}.set_user_roles`,
+					args: { user: state.editing, roles: [...state.picked] },
+					type: "POST",
+				})
+				.then(() => {
+					frappe.show_alert?.({ message: t("Roles updated"), indicator: "green" });
+					// Desk caches the user's roles in boot info, so reload to apply them
+					window.location.reload();
+				})
+				.catch(() => $buttons.prop("disabled", false));
+		});
 
 		$name.on("input", () => {
 			if (!email_touched) {
@@ -708,7 +743,7 @@
 
 		$create.on("submit", (e) => {
 			e.preventDefault();
-			create_user(true);
+			if (!state.editing) create_user(true);
 		});
 		$create.find(".us-create-only").on("click", () => create_user(false));
 

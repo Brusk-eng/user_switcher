@@ -293,6 +293,66 @@ def create_test_user(full_name: str, email: str, roles: list | str | None = None
 	return {"name": user.name, "full_name": user.full_name, "user_type": user.user_type, "roles": sorted(valid_roles)}
 
 
+def _check_role_target(user: str) -> str:
+	"""Raise unless the caller may edit `user`'s roles; returns the real (logged-in) user."""
+	real_user = _real_user()
+	if not _can_switch(real_user):
+		frappe.throw(_("Not permitted to manage roles"), frappe.PermissionError)
+	if user in ("Administrator", "Guest") or not frappe.db.exists("User", user):
+		frappe.throw(_("Cannot manage roles of this user"))
+	if user not in (real_user, frappe.session.user) and user in _blocked_targets(real_user):
+		frappe.throw(_("You are not permitted to manage roles of this user"), frappe.PermissionError)
+	return real_user
+
+
+@frappe.whitelist()
+def get_user_roles(user: str) -> list[str]:
+	"""Roles currently assigned to `user`, minus the automatic ones."""
+	_check_role_target(user)
+	return frappe.get_all(
+		"Has Role",
+		filters={"parenttype": "User", "parent": user, "role": ["not in", AUTOMATIC_ROLES]},
+		pluck="role",
+		order_by="role asc",
+		ignore_permissions=True,
+	)
+
+
+@frappe.whitelist(methods=["POST"])
+def set_user_roles(user: str, roles: list | str | None = None):
+	"""Make `user`'s assignable roles exactly `roles`; roles outside that set are left alone.
+
+	Args:
+		user: Id of the User to change (the signed-in user, or any user the caller may switch into).
+		roles: List (or JSON string) of role names that user should end up with.
+
+	Returns:
+		Dict with the user's `name`, `user_type` and final `roles`.
+
+	Raises:
+		frappe.PermissionError: Caller may not switch users, or the target is blocked.
+		frappe.ValidationError: Target is Administrator/Guest/missing, or the caller would drop their own System Manager.
+	"""
+	real_user = _check_role_target(user)
+
+	roles = frappe.parse_json(roles) if isinstance(roles, str) else (roles or [])
+	assignable = set(frappe.get_all("Role", filters={"disabled": 0}, pluck="name")) - set(AUTOMATIC_ROLES)
+	wanted = set(roles) & assignable
+
+	doc = frappe.get_doc("User", user)
+	current = {d.role for d in doc.roles} & assignable
+	if user == real_user and "System Manager" in current - wanted:
+		frappe.throw(_("You cannot remove System Manager from your own account here"))
+
+	doc.append_roles(*sorted(wanted - current))
+	doc.set("roles", [d for d in doc.roles if d.role not in current - wanted])
+	# ? THE SWITCHER IS ALREADY GATED BY _can_switch; WHILE SWITCHED THE SESSION USER MAY NOT BE ABLE TO WRITE USERS
+	doc.flags.ignore_permissions = True
+	doc.save()
+
+	return {"name": doc.name, "user_type": doc.user_type, "roles": sorted(wanted)}
+
+
 SWITCH_PREFIX = re.compile(r"^(?:switch(?:\s+to)?|su|login\s+as|impersonate)\b\s*(.*)$", re.IGNORECASE)
 
 
