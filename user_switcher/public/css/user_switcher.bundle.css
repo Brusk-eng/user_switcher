@@ -107,6 +107,9 @@
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
+	/* A photo must never start its own drag (or swallow the row's) */
+	-webkit-user-drag: none;
+	pointer-events: none;
 }
 
 #us-floating-container .us-avatar--lg {
@@ -740,11 +743,11 @@
 }
 
 #us-floating-container .us-item.us-drop-before {
-	box-shadow: 0 -2px 0 0 var(--us-accent);
+	box-shadow: 0 -3px 0 0 var(--us-accent);
 }
 
 #us-floating-container .us-item.us-drop-after {
-	box-shadow: 0 2px 0 0 var(--us-accent);
+	box-shadow: 0 3px 0 0 var(--us-accent);
 }
 
 /* ---------- "Test user" button in the filter row ---------- */

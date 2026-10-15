@@ -465,6 +465,50 @@
 			$search.trigger("focus");
 		});
 
+		// ---------- drag to reorder pinned users ----------
+
+		// Handled on the whole list, not per row, so a drop in a gap or past either end still lands:
+		// the pinned row nearest the cursor is the target.
+		function drop_target(client_y) {
+			const rows = $list.find(".us-item[draggable=true]").toArray();
+			for (const row of rows) {
+				const box = row.getBoundingClientRect();
+				if (client_y < box.top + box.height / 2) return { row, after: false };
+			}
+			return rows.length ? { row: rows[rows.length - 1], after: true } : null;
+		}
+
+		function clear_drop_marks() {
+			$list.find(".us-item").removeClass("us-drop-before us-drop-after");
+		}
+
+		$list
+			.on("dragover", (e) => {
+				if (!state.drag_name) return;
+				e.preventDefault();
+				e.originalEvent.dataTransfer.dropEffect = "move";
+				clear_drop_marks();
+				const target = drop_target(e.originalEvent.clientY);
+				if (target && target.row.dataset.name !== state.drag_name) {
+					$(target.row).addClass(target.after ? "us-drop-after" : "us-drop-before");
+				}
+			})
+			.on("drop", (e) => {
+				if (!state.drag_name) return;
+				e.preventDefault();
+				const target = drop_target(e.originalEvent.clientY);
+				if (target) store.move_pin(state.drag_name, target.row.dataset.name, target.after);
+				state.drag_name = null;
+				clear_drop_marks();
+				paint_list();
+			})
+			.on("dragleave", (e) => {
+				// relatedTarget is unreliable for drag events, so compare the pointer with the list's box
+				const box = $list[0].getBoundingClientRect();
+				const { clientX: x, clientY: y } = e.originalEvent;
+				if (x <= box.left || x >= box.right || y <= box.top || y >= box.bottom) clear_drop_marks();
+			});
+
 		function fetch_users() {
 			const request_id = ++state.request_id;
 			if (!state.ctx) $list.html(skeleton());
@@ -630,11 +674,6 @@
 			});
 
 			if (drag) {
-				const clear_marks = () => $list.find(".us-item").removeClass("us-drop-before us-drop-after");
-				const is_after = (e) => {
-					const box = $item[0].getBoundingClientRect();
-					return e.originalEvent.clientY > box.top + box.height / 2;
-				};
 				$item
 					.attr("draggable", "true")
 					.on("dragstart", (e) => {
@@ -646,20 +685,7 @@
 					.on("dragend", () => {
 						state.drag_name = null;
 						$item.removeClass("is-dragging");
-						clear_marks();
-					})
-					.on("dragover", (e) => {
-						if (!state.drag_name || state.drag_name === u.name) return;
-						e.preventDefault();
-						clear_marks();
-						$item.addClass(is_after(e) ? "us-drop-after" : "us-drop-before");
-					})
-					.on("drop", (e) => {
-						e.preventDefault();
-						if (!state.drag_name) return;
-						store.move_pin(state.drag_name, u.name, is_after(e));
-						state.drag_name = null;
-						paint_list();
+						clear_drop_marks();
 					});
 			}
 			return $item;
