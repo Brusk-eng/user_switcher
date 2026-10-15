@@ -625,7 +625,7 @@
 				pinned = store
 					.pins()
 					.map(fresh)
-					.filter((u) => !skip.has(u.name) && matches_type(u));
+					.filter(matches_type); // never skipped, even the user you are viewing as, so pinned numbers stay put
 				const pinned_names = new Set(pinned.map((u) => u.name));
 				most_used = Object.values(store.usage())
 					.filter((e) => !skip.has(e.info.name) && !pinned_names.has(e.info.name))
@@ -652,7 +652,9 @@
 			const section = (title, rows) => {
 				if (!rows.length) return;
 				if (pinned.length || most_used.length) $list.append(`<div class="us-group">${title}</div>`);
-				rows.forEach(({ u, uses, drag }) => $list.append(item(u, ++index, uses, drag)));
+				rows.forEach(({ u, uses, drag }) =>
+					$list.append(item(u, ++index, uses, drag, u.name === ctx.current_user.name))
+				);
 			};
 			section(t("Pinned"), pinned.map((u) => ({ u, drag: pinned.length > 1 })));
 			section(t("Most used"), most_used.map((e) => ({ u: e.info, uses: e.count })));
@@ -662,8 +664,9 @@
 			($active.length ? $active : $list.find(".us-item").first()).addClass("is-active");
 		}
 
-		function item(u, index, uses, drag) {
+		function item(u, index, uses, drag, current) {
 			const website = u.user_type === "Website User" ? `<span class="us-chip us-chip--web">${t("Website")}</span>` : "";
+			const now = current ? `<span class="us-chip us-chip--current">${t("Current")}</span>` : "";
 			const key = index <= 9 ? `<kbd class="us-num">${index}</kbd>` : `<span class="us-num us-num--none"></span>`;
 			const pinned = store.is_pinned(u.name);
 			const title = uses ? t("Switched {0} times", [uses]) : "";
@@ -673,7 +676,7 @@
 					${key}
 					${avatar(u)}
 					<div class="us-item-text">
-						<span class="us-item-name"><span class="us-item-name-text">${esc(display_name(u))}</span>${website}</span>
+						<span class="us-item-name"><span class="us-item-name-text">${esc(display_name(u))}</span>${website}${now}</span>
 						<span class="us-item-email">${esc(u.name)}</span>
 					</div>
 					<button class="us-pin ${pinned ? "is-pinned" : ""}" title="${pinned ? t("Unpin") : t("Pin to top")}"
@@ -686,7 +689,9 @@
 					$list.find(".us-item").removeClass("is-active");
 					$(this).addClass("is-active");
 				})
-				.on("click", () => switch_to(u));
+				.toggleClass("us-item--current", !!current)
+				// Already viewing as this user: nothing to switch, just keep its numbered slot
+				.on("click", () => (current ? close() : switch_to(u)));
 
 			$item.find(".us-pin").on("click", (e) => {
 				e.stopPropagation();

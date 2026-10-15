@@ -491,6 +491,22 @@
 	border: 1px solid var(--us-border);
 }
 
+#us-floating-container .us-chip--current {
+	color: #15803d;
+	background: rgba(21, 128, 61, 0.08);
+	border-color: rgba(21, 128, 61, 0.25);
+	flex-shrink: 0;
+}
+
+#us-floating-container .us-item--current {
+	cursor: default;
+}
+
+#us-floating-container .us-item.us-item--current .us-enter,
+#us-floating-container .us-item.us-item--current.is-active .us-enter {
+	visibility: hidden;
+}
+
 #us-floating-container .us-chip--web {
 	color: #2563eb;
 	background: rgba(37, 99, 235, 0.08);
