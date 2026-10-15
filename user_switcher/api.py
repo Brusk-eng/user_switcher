@@ -77,7 +77,7 @@ def get_context(txt: str | None = None, user_type: str | None = None, limit: int
 	if not _can_switch(real_user):
 		return {"allowed": False}
 
-	limit = min(int(limit), 100)
+	limit = max(0, min(int(limit), 100))
 	if not limit:
 		return {"allowed": True}
 
@@ -192,6 +192,9 @@ def switch_to_user(target_user: str):
 	if target_user == frappe.session.user:
 		return {"current_user": target_user}
 
+	# ? LOG FIRST SO A FAILED AUDIT WRITE BLOCKS THE SWITCH INSTEAD OF LEAVING IT UNRECORDED
+	log_switch(real_user, target_user)
+
 	old_sid = frappe.session.sid
 	session_data = frappe.local.session_obj.data.data
 	login_manager = frappe.local.login_manager
@@ -207,8 +210,6 @@ def switch_to_user(target_user: str):
 		frappe.local.session_obj.set_impersonated(real_user)
 
 	delete_session(old_sid, reason="Switched user via User Switcher")
-
-	log_switch(real_user, target_user)
 
 	return {"current_user": target_user}
 
@@ -379,9 +380,8 @@ def awesomebar_search(txt: str) -> list[dict]:
 					escape_html(frappe.db.get_value("User", real_user, "full_name") or real_user)
 				),
 				"value": f"switch-user:{real_user}",
-				"description": real_user,
+				"description": escape_html(real_user),
 				"route": ["user-switch", real_user],
-				"route_options": {"from_awesomebar": 1},
 				"index": index + 1,
 			}
 		)
@@ -394,7 +394,6 @@ def awesomebar_search(txt: str) -> list[dict]:
 				"value": f"switch-user:{u.name}",
 				"description": escape_html(u.name + (f" · {roles}" if roles else "")),
 				"route": ["user-switch", u.name],
-				"route_options": {"from_awesomebar": 1},
 				"index": index,
 			}
 		)

@@ -1,5 +1,5 @@
 # * user_switcher/tests/test_api.py
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import frappe
 from frappe.tests import IntegrationTestCase
@@ -102,3 +102,33 @@ class TestManageRoles(IntegrationTestCase):
 			self.assertRaises(frappe.ValidationError, api.set_user_roles, user, ["Website Manager"])
 			api.set_user_roles(user, ["System Manager"])
 		self.assertEqual(api.get_user_roles(user), ["System Manager"])
+
+
+class TestSwitchHardening(IntegrationTestCase):
+	def setUp(self):
+		frappe.set_user("Administrator")
+		self.conf = patch.object(frappe.local, "conf", frappe._dict(developer_mode=1))
+		self.conf.start()
+		self.addCleanup(self.conf.stop)
+
+	def test_negative_limit_is_clamped(self):
+		self.assertEqual(api.get_context(limit=-5), {"allowed": True})
+
+	def test_failed_audit_write_blocks_the_switch(self):
+		target = frappe.get_doc(
+			{"doctype": "User", "email": "us_audit_t@example.com", "first_name": "T", "send_welcome_email": 0}
+		).insert().name
+		login_manager = MagicMock()
+		with (
+			patch.object(frappe.local, "login_manager", login_manager, create=True),
+			patch.object(frappe.local, "session_obj", MagicMock(), create=True),
+			patch.object(api, "log_switch", side_effect=frappe.ValidationError("audit down")),
+		):
+			self.assertRaises(frappe.ValidationError, api.switch_to_user, target)
+		login_manager.login_as.assert_not_called()
+
+	def test_awesomebar_results_carry_no_trusted_flag(self):
+		with patch.object(api, "_find_users", return_value=[frappe._dict(name="a@b.co", full_name="A", roles=[])]):
+			results = api.awesomebar_search("su a")
+		self.assertTrue(results)
+		self.assertTrue(all("route_options" not in r for r in results))

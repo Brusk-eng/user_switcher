@@ -170,12 +170,13 @@ User Switcher gives a System Manager the power to act as other users. It's built
 | Only allowed users can switch | Every API call is checked on the server. Hiding the button in the browser is only a convenience. |
 | Permission follows the **real** user | The check uses the account that actually logged in. Switching into a user with fewer rights doesn't stop you switching back. |
 | No escalation to Administrator | Only the real Administrator can switch into `Administrator`. A System Manager can't. |
-| No cross-site request forgery | Switching and creating users only accept POST requests, protected by Frappe's CSRF token. |
-| Links can't switch you | `/app/user-switch/<user>` asks for confirmation when opened from a link. It only switches instantly when you picked the result in the search bar. |
+| No cross-site request forgery | Switching, creating users and changing roles only accept POST requests, protected by Frappe's CSRF token. |
+| Links can't switch you | `/app/user-switch/<user>` always asks for confirmation. Frappe copies any `?name=value` in a link into the page's options, so the page never trusts a flag from the link. Picking a result in the search bar switches straight away through a separate in-page handler. |
 | Real sessions | A proper new session is created (the same mechanism as Frappe's built-in impersonation), and the old one is deleted. |
-| Auditable | Every switch is written to the **Activity Log**. Documents changed while switched are tagged as impersonated in Version history. |
-| Safe output | User names and image URLs are HTML-escaped wherever they're shown. |
+| Auditable | Every switch is written to the read-only **User Switch Log** (who, into whom, when, IP). The log is written first, so if it fails the switch does not happen. Role changes are saved on the User, so they show in its Version history, tagged as impersonated when made while switched. |
+| Safe output | User names, emails and image URLs are HTML-escaped wherever they're shown, including the search-bar results. |
 | Test-user safety | Role names are checked against the Role list. `Administrator`, `All`, `Guest` and `Desk User` are never assigned. |
+| Role management | Only people who may switch can change roles. Administrator and Guest can't be edited, other System Managers are off limits like they are for switching, and you can't remove System Manager from your own account. |
 
 ---
 

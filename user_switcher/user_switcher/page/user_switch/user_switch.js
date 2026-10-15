@@ -7,9 +7,9 @@ frappe.pages["user-switch"].on_page_load = function (wrapper) {
 
 frappe.pages["user-switch"].on_page_show = function (wrapper) {
 	const target = frappe.get_route().slice(1).join("/");
-	// route_options can only be set by in-app navigation (the awesome bar), never by a pasted
-	// link, so a link someone sends you can't silently switch your session.
-	const from_search = !!frappe.route_options?.from_awesomebar;
+	// Frappe's router copies every URL query parameter into frappe.route_options, so a pasted link
+	// can set any flag. Nothing here may trust it: this page always asks before switching. (Picking
+	// a Ctrl+K result switches straight away through the awesomplete-select handler in the bundle.)
 	frappe.route_options = null;
 
 	const $body = $(wrapper).find(".layout-main-section").empty();
@@ -19,11 +19,6 @@ frappe.pages["user-switch"].on_page_show = function (wrapper) {
 	}
 	if (!frappe.user_switcher) {
 		$body.html(`<p class="text-muted">${__("User Switcher is not available on this site.")}</p>`);
-		return;
-	}
-
-	if (from_search) {
-		frappe.user_switcher.switch_to({ name: target });
 		return;
 	}
 
