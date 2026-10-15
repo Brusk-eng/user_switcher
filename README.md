@@ -141,23 +141,15 @@ Test users get no welcome email. Their bio says *"Test user created with User Sw
 
 ## Configuration
 
-The switcher is available when **either** of these is set in the site's config:
-
-```jsonc
-// sites/mysite.localhost/site_config.json
-{
-  "developer_mode": 1,          // on for local development anyway
-  "user_switcher_enabled": 1    // turn it on for staging / UAT without developer mode
-}
-```
+The switcher is available only when `developer_mode` is set in the site's config:
 
 ```bash
-bench --site $SITE set-config user_switcher_enabled 1
+bench --site $SITE set-config developer_mode 1
 ```
 
-To turn it off, remove both settings. The button disappears and the API refuses all requests.
+To turn it off, remove the setting. The button disappears and the API refuses all requests.
 
-**Who can switch:** Administrator, and any user with the **System Manager** role. To change this, edit `ALLOWED_ROLES` in `user_switcher/api.py`.
+**Who can switch:** Administrator, and any user with the **System Manager** role. A System Manager cannot switch into Administrator, or into another System Manager unless they created that user and it has no password set. To change this, edit `ALLOWED_ROLES` in `user_switcher/api.py`.
 
 ---
 
@@ -247,7 +239,7 @@ From other client code you can also call `frappe.user_switcher.switch_to({ name 
 
 | Problem | Fix |
 |---|---|
-| The button doesn't appear | Check that `developer_mode` or `user_switcher_enabled` is set and that you're a System Manager. Then run `bench build --app user_switcher`, `bench --site $SITE clear-cache`, and hard-refresh the browser. |
+| The button doesn't appear | Check that `developer_mode` is set and that you're a System Manager. Then run `bench build --app user_switcher`, `bench --site $SITE clear-cache`, and hard-refresh the browser. |
 | Old behaviour or `[object Object]` labels | A stale build. Rebuild, clear the cache, and hard-refresh. |
 | `su jane` doesn't show up in Ctrl+K | Desk only reads search hooks when it first loads. Run `bench --site $SITE clear-cache` and hard-refresh. |
 | `/app/user-switch` returns "Page not found" | Run `bench --site $SITE migrate` so the page gets created. |

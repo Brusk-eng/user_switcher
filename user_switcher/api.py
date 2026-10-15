@@ -1,3 +1,4 @@
+# * user_switcher/api.py
 import re
 
 import frappe
@@ -15,7 +16,40 @@ def _real_user() -> str:
 
 
 def _is_enabled() -> bool:
-	return bool(frappe.conf.developer_mode or frappe.conf.get("user_switcher_enabled"))
+	return bool(frappe.conf.developer_mode)
+
+
+def _escape_like(txt: str) -> str:
+	"""Escape `\\`, `%` and `_` so user text matches literally inside a LIKE filter."""
+	return txt.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _blocked_targets(real_user: str) -> list[str]:
+	"""Users `real_user` may not switch into.
+
+	Administrator is blocked for everyone else. Other System Managers are blocked unless
+	`real_user` created them and they have no password yet (i.e. they are still test users).
+	"""
+	if real_user == "Administrator":
+		return []
+
+	managers = frappe.get_all(
+		"Has Role", filters={"parenttype": "User", "role": "System Manager"}, pluck="parent", ignore_permissions=True
+	)
+	managers = [m for m in managers if m != real_user]
+	if not managers:
+		return ["Administrator"]
+
+	owned = frappe.get_all(
+		"User", filters={"name": ["in", managers], "owner": real_user}, pluck="name", ignore_permissions=True
+	)
+	# ? __Auth IS NOT A DOCTYPE, SO frappe.get_all CANNOT READ IT
+	with_password = frappe.db.sql_list(
+		"select name from __Auth where doctype = 'User' and fieldname = 'password' and name in %s",
+		(tuple(owned) or ("",),),
+	)
+	allowed = set(owned) - set(with_password)
+	return ["Administrator", *(m for m in managers if m not in allowed)]
 
 
 def _can_switch(real_user: str | None = None) -> bool:
@@ -29,7 +63,16 @@ def _can_switch(real_user: str | None = None) -> bool:
 
 @frappe.whitelist()
 def get_context(txt: str | None = None, user_type: str | None = None, limit: int = 30):
-	"""Return switcher state + a user list. Never throws for unauthorised users, just says no."""
+	"""Return switcher state and a filtered user list.
+
+	Args:
+		txt: Optional text matched against user id and full name.
+		user_type: Optional "System User" or "Website User" filter.
+		limit: Max users returned (capped at 100); 0 returns only the `allowed` flag.
+
+	Returns:
+		`{"allowed": False}` for unauthorised users (never throws), else the switcher state.
+	"""
 	real_user = _real_user()
 	if not _can_switch(real_user):
 		return {"allowed": False}
@@ -51,16 +94,15 @@ def get_context(txt: str | None = None, user_type: str | None = None, limit: int
 
 def _find_users(real_user: str, txt: str | None, user_type: str | None, limit: int) -> list[dict]:
 	filters = {"enabled": 1, "name": ["not in", ["Guest", frappe.session.user]]}
-	if real_user != "Administrator":
-		# A System Manager must not escalate to Administrator
-		filters["name"][1].append("Administrator")
+	filters["name"][1].extend(_blocked_targets(real_user))
 
 	if user_type in ("System User", "Website User"):
 		filters["user_type"] = user_type
 
 	or_filters = None
 	if txt:
-		or_filters = {"name": ["like", f"%{txt}%"], "full_name": ["like", f"%{txt}%"]}
+		like = f"%{_escape_like(txt)}%"
+		or_filters = {"name": ["like", like], "full_name": ["like", like]}
 
 	users = frappe.get_all(
 		"User",
@@ -102,17 +144,50 @@ def _attach_roles(users: list[dict]) -> None:
 		u["roles"] = roles_by_user.get(u.name, [])
 
 
+def log_switch(real_user: str, target_user: str) -> None:
+	"""Record a completed switch in a read-only User Switch Log.
+
+	Args:
+		real_user: The user who actually logged in.
+		target_user: The user the session now belongs to.
+	"""
+	doc = frappe.get_doc(
+		{
+			"doctype": "User Switch Log",
+			"real_user": real_user,
+			"target_user": target_user,
+			"action": "Switch" if target_user != real_user else "Switch Back",
+			"ip_address": frappe.local.request_ip,
+		}
+	)
+	doc.flags.from_switcher = True
+	# ? SWITCHER IS ALREADY GATED BY _can_switch; THE TARGET USER MAY HAVE NO PERMISSION ON THIS DOCTYPE
+	doc.insert(ignore_permissions=True)
+
+
 @frappe.whitelist(methods=["POST"])
 def switch_to_user(target_user: str):
+	"""Start a new session as `target_user` and log it.
+
+	Args:
+		target_user: Id of an enabled User to switch into.
+
+	Returns:
+		`{"current_user": target_user}`.
+
+	Raises:
+		frappe.PermissionError: Caller may not switch, or the target is blocked (see `_blocked_targets`).
+		frappe.ValidationError: Target is Guest, missing or disabled.
+	"""
 	real_user = _real_user()
 	if not _can_switch(real_user):
 		frappe.throw(_("Not permitted to switch users"), frappe.PermissionError)
 
 	if target_user == "Guest" or not frappe.db.get_value("User", target_user, "enabled"):
-		frappe.throw(_("User {0} does not exist or is disabled").format(target_user))
+		frappe.throw(_("Cannot switch to this user"))
 
-	if target_user == "Administrator" and real_user != "Administrator":
-		frappe.throw(_("Only Administrator can switch into Administrator"), frappe.PermissionError)
+	if target_user != real_user and target_user in _blocked_targets(real_user):
+		frappe.throw(_("You are not permitted to switch into this user"), frappe.PermissionError)
 
 	if target_user == frappe.session.user:
 		return {"current_user": target_user}
@@ -133,23 +208,14 @@ def switch_to_user(target_user: str):
 
 	delete_session(old_sid, reason="Switched user via User Switcher")
 
-	frappe.get_doc(
-		{
-			"doctype": "Activity Log",
-			"user": target_user,
-			"status": "Success",
-			"operation": "Impersonate",
-			"subject": _("{0} switched to {1} via User Switcher").format(real_user, target_user)
-			if target_user != real_user
-			else _("{0} switched back to own account via User Switcher").format(real_user),
-		}
-	).insert(ignore_permissions=True, ignore_links=True)
+	log_switch(real_user, target_user)
 
 	return {"current_user": target_user}
 
 
 @frappe.whitelist(methods=["POST"])
 def switch_back():
+	"""Return to the user who originally logged in."""
 	return switch_to_user(_real_user())
 
 
@@ -169,6 +235,21 @@ def get_assignable_roles():
 
 @frappe.whitelist(methods=["POST"])
 def create_test_user(full_name: str, email: str, roles: list | str | None = None, switch: int = 1):
+	"""Create an enabled test user with the given roles, optionally switching into it.
+
+	Args:
+		full_name: Display name; split on the first space into first/last name.
+		email: Unique email, used as the User id.
+		roles: List (or JSON string) of role names; automatic and disabled roles are dropped.
+		switch: Truthy to switch into the new user right after creation.
+
+	Returns:
+		Dict with the new user's `name`, `full_name`, `user_type` and `roles`.
+
+	Raises:
+		frappe.PermissionError: Caller may not switch users.
+		frappe.DuplicateEntryError: A user with this email already exists.
+	"""
 	real_user = _real_user()
 	if not _can_switch(real_user):
 		frappe.throw(_("Not permitted to create test users"), frappe.PermissionError)
@@ -203,6 +284,8 @@ def create_test_user(full_name: str, email: str, roles: list | str | None = None
 	user.flags.no_welcome_mail = True
 	# The switcher is already restricted to System Managers, who can create users anyway
 	user.insert(ignore_permissions=True)
+	# ? WHILE SWITCHED, THE INSERT OWNER IS THE IMPERSONATED USER; _blocked_targets NEEDS THE REAL ONE
+	frappe.db.set_value("User", user.name, "owner", real_user, update_modified=False)
 
 	if int(switch):
 		switch_to_user(user.name)

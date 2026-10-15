@@ -1,3 +1,4 @@
+# * user_switcher/boot.py
 from user_switcher.api import _can_switch
 
 
