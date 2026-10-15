@@ -504,14 +504,19 @@
 					</div>
 					<button class="us-icon-btn us-close" aria-label="${t("Close")}">${ICONS.close}</button>
 				</div>
-				<button class="us-edit-roles" title="${t("Give or remove roles (access) for this user")}">
-					${ICONS.shield}
-					<span class="us-edit-roles-text">
-						<b>${t("Manage roles")}</b>
-						<small>${t("Give or remove access for {0}", [esc(display_name(me))])}</small>
-					</span>
-					${ICONS.chevron_right}
-				</button>
+				${
+					// Administrator's roles can't be edited (the server refuses), so don't offer it
+					me.name === "Administrator"
+						? ""
+						: `<button class="us-edit-roles" title="${t("Give or remove roles (access) for this user")}">
+							${ICONS.shield}
+							<span class="us-edit-roles-text">
+								<b>${t("Manage roles")}</b>
+								<small>${t("Give or remove access for {0}", [esc(display_name(me))])}</small>
+							</span>
+							${ICONS.chevron_right}
+						</button>`
+				}
 				${
 					ctx.is_switched
 						? `<button class="us-switch-back">
