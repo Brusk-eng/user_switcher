@@ -899,20 +899,170 @@
 	pointer-events: none;
 }
 
+/* "Manage roles" entry button in the identity header */
+#us-floating-container .us-edit-roles {
+	margin-top: 10px;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 9px 10px;
+	border-radius: 8px;
+	text-align: left;
+	color: var(--us-text);
+	background: var(--us-bg);
+	border: 1px solid var(--us-border);
+	transition: border-color 0.15s, background 0.15s;
+}
+
+#us-floating-container .us-edit-roles:hover {
+	background: var(--us-hover);
+	border-color: var(--us-muted);
+}
+
+#us-floating-container .us-edit-roles svg {
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+}
+
+#us-floating-container .us-edit-roles svg:last-child {
+	width: 14px;
+	height: 14px;
+	color: var(--us-muted);
+}
+
+#us-floating-container .us-edit-roles-text {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+	line-height: 1.3;
+}
+
+#us-floating-container .us-edit-roles-text b {
+	font-size: 13px;
+	font-weight: 600;
+}
+
+#us-floating-container .us-edit-roles-text small {
+	font-size: 11px;
+	color: var(--us-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 /* Roles mode reuses the create form: no name/email, Save instead of Create */
 #us-floating-container .us-roles-save,
+#us-floating-container .us-roles-cancel,
+#us-floating-container .us-roles-intro,
+#us-floating-container .us-create-sub,
 #us-floating-container.us-roles-mode .us-create-fields,
 #us-floating-container.us-roles-mode .us-create-only,
 #us-floating-container.us-roles-mode .us-create-actions [type="submit"] {
 	display: none;
 }
 
-#us-floating-container.us-roles-mode .us-roles-save {
+#us-floating-container.us-roles-mode .us-roles-save,
+#us-floating-container.us-roles-mode .us-roles-cancel {
 	display: inline-block;
 }
 
+#us-floating-container .us-create-titles {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+#us-floating-container.us-roles-mode .us-card {
+	width: 480px;
+	max-width: calc(100vw - 24px);
+	max-height: min(760px, calc(100vh - 100px));
+}
+
+#us-floating-container.us-roles-mode .us-create {
+	gap: 12px;
+	padding: 14px 16px 16px;
+}
+
+#us-floating-container.us-roles-mode .us-create-title {
+	font-size: 15px;
+}
+
+#us-floating-container.us-roles-mode .us-create-sub {
+	display: block;
+	font-size: 12px;
+	font-weight: 400;
+	color: var(--us-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#us-floating-container.us-roles-mode .us-roles-intro {
+	display: block;
+	margin: 0;
+	padding: 8px 10px;
+	border-radius: 8px;
+	font-size: 12px;
+	color: var(--us-muted);
+	background: var(--us-bg-subtle);
+}
+
+#us-floating-container.us-roles-mode .us-field {
+	font-size: 12px;
+}
+
+#us-floating-container .us-picked-count {
+	display: none;
+}
+
+#us-floating-container.us-roles-mode .us-picked-count {
+	display: inline;
+	font-weight: 600;
+	color: var(--us-text);
+}
+
+#us-floating-container.us-roles-mode .us-role-search {
+	height: 36px;
+}
+
 #us-floating-container.us-roles-mode .us-role-list {
-	max-height: 260px;
+	min-height: 240px;
+	max-height: min(420px, 45vh);
+}
+
+#us-floating-container.us-roles-mode .us-role {
+	padding: 7px 8px;
+	font-size: 13px;
+}
+
+#us-floating-container.us-roles-mode .us-role:has(input:checked) {
+	font-weight: 500;
+	background: var(--us-hover);
+}
+
+#us-floating-container.us-roles-mode .us-edit-roles,
+#us-floating-container.us-roles-mode .us-switch-back,
+#us-floating-container.us-roles-mode .us-footer {
+	display: none;
+}
+
+/* Keep Save/Cancel visible however long the role list is */
+#us-floating-container.us-roles-mode .us-create-actions {
+	position: sticky;
+	bottom: -16px;
+	margin: 0 -16px -16px;
+	padding: 12px 16px;
+	background: var(--us-bg);
+	border-top: 1px solid var(--us-border);
+}
+
+#us-floating-container.us-roles-mode .us-btn {
+	height: 34px;
+	padding: 0 16px;
+	font-size: 13px;
 }
 
 /* ---------- Switched banner (every page) ---------- */

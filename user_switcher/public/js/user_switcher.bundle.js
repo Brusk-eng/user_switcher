@@ -25,6 +25,7 @@
 		enter: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>`,
 		star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>`,
 		plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
+		chevron_right: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`,
 		chevron_left: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>`,
 		shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>`,
 		eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`,
@@ -297,8 +298,12 @@
 					<form class="us-create" autocomplete="off" novalidate>
 						<div class="us-create-head">
 							<button type="button" class="us-icon-btn us-create-cancel" aria-label="${t("Back")}">${ICONS.chevron_left}</button>
-							<span class="us-create-title">${t("New test user")}</span>
+							<span class="us-create-titles">
+								<span class="us-create-title">${t("New test user")}</span>
+								<span class="us-create-sub"></span>
+							</span>
 						</div>
+						<p class="us-roles-intro">${t("Tick the roles this user should have. Unticked roles are removed when you save.")}</p>
 						<label class="us-field us-create-fields">
 							<span>${t("Full name")}</span>
 							<input name="full_name" type="text" placeholder="${t("e.g. Priya Accounts")}" required>
@@ -309,7 +314,7 @@
 						</label>
 						<div class="us-field">
 							<span class="us-field-row">
-								<span>${t("Roles")}</span>
+								<span>${t("Roles")} <span class="us-picked-count"></span></span>
 								<span class="us-type-hint"></span>
 							</span>
 							<input class="us-role-search" type="text" placeholder="${t("Filter roles")}">
@@ -318,6 +323,7 @@
 						<div class="us-create-actions">
 							<button type="button" class="us-btn us-create-only">${t("Create")}</button>
 							<button type="submit" class="us-btn us-btn--primary">${t("Create & switch")}</button>
+							<button type="button" class="us-btn us-roles-cancel">${t("Cancel")}</button>
 							<button type="button" class="us-btn us-btn--primary us-roles-save">${t("Save roles")}</button>
 						</div>
 					</form>
@@ -496,9 +502,16 @@
 						<span class="us-identity-name">${esc(display_name(me))}</span>
 						<span class="us-identity-email">${esc(me.name)}</span>
 					</div>
-					<button class="us-icon-btn us-edit-roles" title="${t("Manage roles")}" aria-label="${t("Manage roles")}">${ICONS.shield}</button>
 					<button class="us-icon-btn us-close" aria-label="${t("Close")}">${ICONS.close}</button>
 				</div>
+				<button class="us-edit-roles" title="${t("Give or remove roles (access) for this user")}">
+					${ICONS.shield}
+					<span class="us-edit-roles-text">
+						<b>${t("Manage roles")}</b>
+						<small>${t("Give or remove access for {0}", [esc(display_name(me))])}</small>
+					</span>
+					${ICONS.chevron_right}
+				</button>
 				${
 					ctx.is_switched
 						? `<button class="us-switch-back">
@@ -641,6 +654,7 @@
 			state.editing = null;
 			$root.toggleClass("us-creating", on).removeClass("us-roles-mode");
 			$create.find(".us-create-title").text(t("New test user"));
+			$create.find(".us-create-sub").text("");
 			if (!on) {
 				$search.trigger("focus");
 				return;
@@ -659,13 +673,18 @@
 		function show_roles(user) {
 			show_create(true);
 			state.editing = user.name;
+			state.original = new Set();
 			$root.addClass("us-roles-mode");
-			$create.find(".us-create-title").text(t("Roles for {0}", [display_name(user)]));
+			$create.find(".us-create-title").text(t("Manage roles"));
+			$create.find(".us-create-sub").text(`${display_name(user)} · ${user.name}`);
 			frappe.call({ method: `${API}.get_user_roles`, args: { user: user.name }, type: "GET" }).then((r) => {
-				state.picked = new Set(r.message || []);
+				state.original = new Set(r.message || []);
+				state.picked = new Set(state.original);
 				load_roles();
 			});
 		}
+
+		$create.find(".us-roles-cancel").on("click", () => show_create(false));
 
 		$create.find(".us-roles-save").on("click", () => {
 			const $buttons = $create.find(".us-btn").prop("disabled", true);
@@ -739,6 +758,12 @@
 			$create
 				.find(".us-type-hint")
 				.text(picked.length ? (desk ? t("→ System User") : t("→ Website User")) : t("none → Website User"));
+
+			if (state.editing) {
+				$create.find(".us-picked-count").text(t("· {0} selected", [picked.length]));
+				const changed = picked.length !== state.original.size || picked.some((r) => !state.original.has(r));
+				$create.find(".us-roles-save").prop("disabled", !changed);
+			}
 		}
 
 		$create.on("submit", (e) => {
