@@ -68,7 +68,7 @@ bench build --app user_switcher
 bench --site $SITE clear-cache
 ```
 
-Hard-refresh the browser (`Ctrl+Shift+R`). The switcher button appears at the bottom-right of every page.
+Then turn it on for the site (see [Configuration](#configuration)): `developer_mode` and `user_switcher_enabled`. Hard-refresh the browser (`Ctrl+Shift+R`). The switcher button appears at the bottom-right of every page.
 
 **Requirements:** Frappe v16 and Python 3.14 or newer. ERPNext is optional; the app works on plain Frappe.
 
@@ -149,13 +149,15 @@ You can't edit Administrator, Guest or other System Managers, and you can't remo
 
 ## Configuration
 
-The switcher is available only when `developer_mode` is set in the site's config:
+The switcher is available only when **both** settings are on in the site's config. `developer_mode` alone is not enough, because it is often left on by habit, or by mistake on a live site.
 
 ```bash
 bench --site $SITE set-config developer_mode 1
+bench --site $SITE set-config user_switcher_enabled 1
+bench restart
 ```
 
-To turn it off, remove the setting. The button disappears and the API refuses all requests.
+To turn it off, remove either setting. The button disappears, the API refuses all requests, and any session someone is switched into is ended on its next request.
 
 **Who can switch:** Administrator, and any user with the **System Manager** role. A System Manager cannot switch into Administrator, or into another System Manager unless they created that user and it has no password set. To change this, edit `ALLOWED_ROLES` in `user_switcher/api.py`.
 
@@ -172,7 +174,10 @@ User Switcher gives a System Manager the power to act as other users. It's built
 | No escalation to Administrator | Only the real Administrator can switch into `Administrator`. A System Manager can't. |
 | No cross-site request forgery | Switching, creating users and changing roles only accept POST requests, protected by Frappe's CSRF token. |
 | Links can't switch you | `/app/user-switch/<user>` always asks for confirmation. Frappe copies any `?name=value` in a link into the page's options, so the page never trusts a flag from the link. Picking a result in the search bar switches straight away through a separate in-page handler. |
+| Two switches, not one | It needs `developer_mode` **and** `user_switcher_enabled`. Only an enabled user can switch. |
 | Real sessions | A proper new session is created (the same mechanism as Frappe's built-in impersonation), and the old one is deleted. |
+| No orphaned sessions | If the real user is disabled, loses System Manager, or the switcher is turned off, the session they switched into ends on its next request. |
+| Refusals are logged | Refused switch, role and test-user requests are written to the site's `logs/user_switcher.log` with the user, target and IP. |
 | Auditable | Every switch is written to the read-only **User Switch Log** (who, into whom, when, IP). The log is written first, so if it fails the switch does not happen. Role changes are saved on the User, so they show in its Version history, tagged as impersonated when made while switched. |
 | Safe output | User names, emails and image URLs are HTML-escaped wherever they're shown, including the search-bar results. |
 | Test-user safety | Role names are checked against the Role list. `Administrator`, `All`, `Guest` and `Desk User` are never assigned. |

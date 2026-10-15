@@ -270,3 +270,6 @@ awesomebar_search = ["user_switcher.api.awesomebar_search"]
 
 # ? AUDIT LOGS MUST NOT STOP A SWITCHED-INTO TEST USER FROM BEING DELETED
 ignore_links_on_delete = ["User Switch Log"]
+
+# Ends an impersonated session when the real user is disabled, loses System Manager or the switcher is turned off
+before_request = ["user_switcher.api.end_orphaned_session"]

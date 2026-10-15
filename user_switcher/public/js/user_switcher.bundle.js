@@ -289,7 +289,7 @@
 				<span>${kbd("Esc")} ${t("close")}</span>
 				<span>${kbd("Ctrl+K")} ${t("then type")} <i>su jane</i></span>
 			</div>
-			${item("info", t("Good to know"), t("It works only when developer mode is on. Every switch is saved in the User Switch Log. Do not use it on a live site."))}
+			${item("info", t("Good to know"), t("It works only when developer mode and user_switcher_enabled are both on. Every switch is saved in the User Switch Log. Do not use it on a live site."))}
 		`;
 	}
 

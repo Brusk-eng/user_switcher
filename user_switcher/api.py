@@ -16,7 +16,8 @@ def _real_user() -> str:
 
 
 def _is_enabled() -> bool:
-	return bool(frappe.conf.developer_mode)
+	# ? NEEDS BOTH SETTINGS: developer_mode ALONE IS OFTEN ON BY HABIT (OR BY MISTAKE ON A LIVE SITE)
+	return bool(frappe.conf.developer_mode and frappe.conf.get("user_switcher_enabled"))
 
 
 def _escape_like(txt: str) -> str:
@@ -56,9 +57,54 @@ def _can_switch(real_user: str | None = None) -> bool:
 	real_user = real_user or _real_user()
 	if real_user == "Guest" or not _is_enabled():
 		return False
+	if not frappe.get_cached_value("User", real_user, "enabled"):
+		return False
 	if real_user == "Administrator":
 		return True
 	return bool(ALLOWED_ROLES & set(frappe.get_roles(real_user)))
+
+
+def _deny(message: str, action: str, target: str | None = None) -> None:
+	"""Log a refused request, then raise PermissionError.
+
+	Args:
+		message: Translated text shown to the caller.
+		action: Short name of what was attempted, e.g. "switch" or "manage_roles".
+		target: The user the request was aimed at, if any.
+
+	Raises:
+		frappe.PermissionError: Always.
+	"""
+	frappe.logger("user_switcher").warning(
+		"denied %s: session_user=%s real_user=%s target=%s ip=%s",
+		action,
+		frappe.session.user,
+		_real_user(),
+		target,
+		getattr(frappe.local, "request_ip", None),
+	)
+	frappe.throw(message, frappe.PermissionError)
+
+
+def end_orphaned_session() -> None:
+	"""`before_request` hook: end an impersonated session once its real user may no longer switch.
+
+	Without this, disabling the System Manager, removing their role or turning the switcher off
+	would leave the impersonated session running as the target user until it expires.
+
+	Raises:
+		frappe.SessionExpired: The session was ended; the browser goes back to the login page.
+	"""
+	impersonator = (getattr(frappe.session, "data", None) or {}).get("impersonated_by")
+	if not impersonator or _can_switch(impersonator):
+		return
+	frappe.logger("user_switcher").warning(
+		"ended orphaned session: session_user=%s impersonated_by=%s", frappe.session.user, impersonator
+	)
+	delete_session(frappe.session.sid, reason="User Switcher: the real user may no longer switch")
+	# The error handler rolls the request back, which would undo the delete
+	frappe.db.commit()
+	raise frappe.SessionExpired
 
 
 @frappe.whitelist()
@@ -181,13 +227,13 @@ def switch_to_user(target_user: str):
 	"""
 	real_user = _real_user()
 	if not _can_switch(real_user):
-		frappe.throw(_("Not permitted to switch users"), frappe.PermissionError)
+		_deny(_("Not permitted to switch users"), "switch", target_user)
 
 	if target_user == "Guest" or not frappe.db.get_value("User", target_user, "enabled"):
 		frappe.throw(_("Cannot switch to this user"))
 
 	if target_user != real_user and target_user in _blocked_targets(real_user):
-		frappe.throw(_("You are not permitted to switch into this user"), frappe.PermissionError)
+		_deny(_("You are not permitted to switch into this user"), "switch", target_user)
 
 	if target_user == frappe.session.user:
 		return {"current_user": target_user}
@@ -224,7 +270,7 @@ def switch_back():
 def get_assignable_roles():
 	"""Roles offered when creating a test user. `desk_access` decides System vs Website user."""
 	if not _can_switch():
-		frappe.throw(_("Not permitted"), frappe.PermissionError)
+		_deny(_("Not permitted"), "list_roles")
 	return frappe.get_all(
 		"Role",
 		filters={"disabled": 0, "name": ["not in", AUTOMATIC_ROLES]},
@@ -253,7 +299,7 @@ def create_test_user(full_name: str, email: str, roles: list | str | None = None
 	"""
 	real_user = _real_user()
 	if not _can_switch(real_user):
-		frappe.throw(_("Not permitted to create test users"), frappe.PermissionError)
+		_deny(_("Not permitted to create test users"), "create_test_user", email)
 
 	full_name = (full_name or "").strip()
 	email = (email or "").strip().lower()
@@ -298,11 +344,11 @@ def _check_role_target(user: str) -> str:
 	"""Raise unless the caller may edit `user`'s roles; returns the real (logged-in) user."""
 	real_user = _real_user()
 	if not _can_switch(real_user):
-		frappe.throw(_("Not permitted to manage roles"), frappe.PermissionError)
+		_deny(_("Not permitted to manage roles"), "manage_roles", user)
 	if user in ("Administrator", "Guest") or not frappe.db.exists("User", user):
 		frappe.throw(_("Cannot manage roles of this user"))
 	if user not in (real_user, frappe.session.user) and user in _blocked_targets(real_user):
-		frappe.throw(_("You are not permitted to manage roles of this user"), frappe.PermissionError)
+		_deny(_("You are not permitted to manage roles of this user"), "manage_roles", user)
 	return real_user
 
 
