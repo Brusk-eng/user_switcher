@@ -178,7 +178,7 @@
 		};
 	}
 
-	// ---------- switching (shared by the widget, the banner and the Ctrl+K page) ----------
+	// ---------- switching (shared by the widget and the banner) ----------
 
 	function switch_to(user, { back = false } = {}) {
 		$("#us-floating-container").removeClass("us-open").addClass("us-busy");
@@ -287,7 +287,6 @@
 				<span>${kbd(SHORTCUT_LABEL)} ${t("open or close")}</span>
 				<span>${kbd("↑")}${kbd("↓")}${kbd("↵")} ${t("move and pick")}</span>
 				<span>${kbd("Esc")} ${t("close")}</span>
-				<span>${kbd("Ctrl+K")} ${t("then type")} <i>su jane</i></span>
 			</div>
 			${item("info", t("Good to know"), t("It works only when developer mode and user_switcher_enabled are both on. Every switch is saved in the User Switch Log. Do not use it on a live site."))}
 		`;
@@ -982,26 +981,6 @@
 				return;
 			}
 			switch_back();
-		},
-		true
-	);
-
-	// ---------- Ctrl+K awesome bar ----------
-
-	// Our awesome bar results carry value "switch-user:<email>". Catch the selection in the
-	// capture phase, before Frappe routes to /app/user-switch, so the switch starts straight
-	// from the current page instead of flashing that page first. The route stays as a fallback.
-	document.addEventListener(
-		"awesomplete-select",
-		(e) => {
-			const value = e.text?.value;
-			if (typeof value !== "string" || !value.startsWith("switch-user:")) return;
-			e.preventDefault(); // stops Awesomplete filling the input / firing selectcomplete
-			e.stopImmediatePropagation(); // stops Frappe's handler from routing
-			$(e.target).closest(".modal").modal?.("hide");
-			const name = value.slice("switch-user:".length);
-			if (name === who.real) switch_back();
-			else switch_to({ name });
 		},
 		true
 	);

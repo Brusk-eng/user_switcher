@@ -1,10 +1,9 @@
 # * user_switcher/api.py
-import re
 
 import frappe
 from frappe import _
 from frappe.sessions import delete_session
-from frappe.utils import escape_html, validate_email_address
+from frappe.utils import validate_email_address
 
 ALLOWED_ROLES = {"System Manager"}
 AUTOMATIC_ROLES = ["All", "Guest", "Administrator", "Desk User"]
@@ -398,49 +397,3 @@ def set_user_roles(user: str, roles: list | str | None = None):
 	doc.save()
 
 	return {"name": doc.name, "user_type": doc.user_type, "roles": sorted(wanted)}
-
-
-SWITCH_PREFIX = re.compile(r"^(?:switch(?:\s+to)?|su|login\s+as|impersonate)\b\s*(.*)$", re.IGNORECASE)
-
-
-def awesomebar_search(txt: str) -> list[dict]:
-	"""`awesomebar_search` hook: "switch jane" / "su jane" in Ctrl+K switches user."""
-	real_user = _real_user()
-	if not _can_switch(real_user):
-		return []
-
-	match = SWITCH_PREFIX.match(txt.strip())
-	if match:
-		query, index = match.group(1).strip(), 150
-	elif len(txt.strip()) >= 3:
-		# Plain name searches still offer a switch, but below Frappe's own results
-		query, index = txt.strip(), 5
-	else:
-		return []
-
-	results = []
-	if match and real_user != frappe.session.user and (not query or query.lower() in "back"):
-		results.append(
-			{
-				"label": _("Switch back to {0}").format(
-					escape_html(frappe.db.get_value("User", real_user, "full_name") or real_user)
-				),
-				"value": f"switch-user:{real_user}",
-				"description": escape_html(real_user),
-				"route": ["user-switch", real_user],
-				"index": index + 1,
-			}
-		)
-
-	for u in _find_users(real_user, query, None, 8 if match else 3):
-		roles = ", ".join(u.roles[:3])
-		results.append(
-			{
-				"label": _("Switch to {0}").format(escape_html(u.full_name or u.name)),
-				"value": f"switch-user:{u.name}",
-				"description": escape_html(u.name + (f" · {roles}" if roles else "")),
-				"route": ["user-switch", u.name],
-				"index": index,
-			}
-		)
-	return results

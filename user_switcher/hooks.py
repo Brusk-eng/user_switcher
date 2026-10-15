@@ -265,9 +265,6 @@ web_include_js = "user_switcher.bundle.js"
 
 extend_bootinfo = "user_switcher.boot.extend_bootinfo"
 
-# "switch jane" / "su jane" in the Ctrl+K awesome bar
-awesomebar_search = ["user_switcher.api.awesomebar_search"]
-
 # ? AUDIT LOGS MUST NOT STOP A SWITCHED-INTO TEST USER FROM BEING DELETED
 ignore_links_on_delete = ["User Switch Log"]
 

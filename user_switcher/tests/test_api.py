@@ -127,12 +127,6 @@ class TestSwitchHardening(IntegrationTestCase):
 			self.assertRaises(frappe.ValidationError, api.switch_to_user, target)
 		login_manager.login_as.assert_not_called()
 
-	def test_awesomebar_results_carry_no_trusted_flag(self):
-		with patch.object(api, "_find_users", return_value=[frappe._dict(name="a@b.co", full_name="A", roles=[])]):
-			results = api.awesomebar_search("su a")
-		self.assertTrue(results)
-		self.assertTrue(all("route_options" not in r for r in results))
-
 
 class TestAccessGates(IntegrationTestCase):
 	def setUp(self):
