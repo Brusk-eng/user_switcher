@@ -279,7 +279,7 @@
 			<p class="us-info-lead">${t("See the app exactly as another user sees it. Pick a user and you are logged in as them. Go back anytime with one click.")}</p>
 			${item("swap", t("Switch to a user"), t("Click a user, or press its number {0} to {1}. Type in the search box to find someone by name or email.", [kbd(1), kbd(9)]))}
 			${item("back", t("Come back to your own account"), t("Press {0}, click “Back to …” at the top, or press {1} on any page.", [kbd(0), kbd(BACK_SHORTCUT_LABEL)]))}
-			${item("star", t("Favourites (pinned users)"), t("Click the star on a user to pin them at the top. Pinned users keep their numbers, even after you switch. Drag a pinned user up or down to change the order. Users you switch to often also show under Most used."))}
+			${item("star", t("Pinned users"), t("Click the star on a user to pin them at the top. Pinned users keep their numbers, even after you switch. Drag a pinned user up or down to change the order. Users you switch to often also show under Most used."))}
 			${item("shield", t("Manage roles"), t("Click Manage roles at the top to give or remove roles (access) for the user you are viewing as. Tick the roles, then press Save roles."))}
 			${item("plus", t("Create a test user"), t("Click + Test user, type a name, tick the roles and create. You can switch into the new user right away."))}
 			${item("eye", t("Hide the button"), t("Click Hide to remove the button until your next login. Press {0} to bring it back.", [kbd(SHORTCUT_LABEL)]))}

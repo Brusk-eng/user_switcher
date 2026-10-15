@@ -10,15 +10,16 @@ User Switcher is a Frappe and ERPNext app for developers, implementers, and QA t
 [![GitHub](https://img.shields.io/badge/GitHub-renish--1111%2Fuser__switcher-181717?logo=github)](https://github.com/renish-1111/user_switcher)
 
 <p align="center">
-  <img src="docs/screenshots/switcher-light.png" alt="The switcher open while viewing as another user, with pinned and most-used users and the amber 'Viewing as' banner" width="440">
+  <img src="docs/screenshots/switcher-light.png" alt="The switcher open while viewing as a user. It shows the Manage roles button, a pinned group with a Current tag, the most-used users, and the amber 'Viewing as' banner" width="400">
   &nbsp;
-  <img src="docs/screenshots/create-test-user-dark.png" alt="Creating a test user with roles, in dark mode" width="440">
+  <img src="docs/screenshots/manage-roles-dark.png" alt="The Manage roles panel in dark mode. The current roles of the user are ticked and listed first" width="400">
 </p>
 
-<p align="center"><img src="docs/screenshots/desk-overview-light.png" alt="The switcher open on the ERPNext Desk home page" width="900"></p>
-
-> [!NOTE]
-> The screenshots show an earlier version of the screen. The layout, the pinned-user rows, and the role panel have changed since then.
+<p align="center">
+  <img src="docs/screenshots/drag-reorder-light.png" alt="A pinned user is dragged to a new place. The row shows as a dashed slot and the other rows slide out of the way" width="400">
+  &nbsp;
+  <img src="docs/screenshots/how-to-guide-light.png" alt="The how-to guide that opens from the info button, written in plain language" width="400">
+</p>
 
 > [!WARNING]
 > This is a development and testing tool. It is off by default. It works only when **both** `developer_mode` and `user_switcher_enabled` are on (see [Configuration](#configuration)). Every switch is logged. Do not turn it on for a live site unless you accept the risk.
@@ -136,6 +137,8 @@ The results show next to the normal Frappe results. A plain name search (`jane`)
 2. Enter a full name. The email fills in as `<name>@example.com`. You can change it.
 3. Tick the roles. The form shows if the result is a **System User** or a **Website User**. Frappe decides this from the roles.
 4. Click **Create & switch**, or click **Create**.
+
+<p align="center"><img src="docs/screenshots/create-test-user-light.png" alt="The new test user form with a name, an email, and three roles ticked" width="400"></p>
 
 The app sends no welcome email to a test user. The bio of the user says "Test user created with User Switcher by …". Use the bio to find and delete test users later.
 
