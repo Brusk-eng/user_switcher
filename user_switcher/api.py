@@ -107,13 +107,17 @@ def end_orphaned_session() -> None:
 
 
 @frappe.whitelist()
-def get_context(txt: str | None = None, user_type: str | None = None, limit: int = 30):
+def get_context(
+	txt: str | None = None, user_type: str | None = None, limit: int = 30, cached: list | str | None = None
+):
 	"""Return switcher state and a filtered user list.
 
 	Args:
 		txt: Optional text matched against user id and full name.
 		user_type: Optional "System User" or "Website User" filter.
 		limit: Max users returned (capped at 100); 0 returns only the `allowed` flag.
+		cached: Optional user ids the browser has pinned or remembered; those that were deleted
+			or disabled come back in `stale` so the UI can forget them.
 
 	Returns:
 		`{"allowed": False}` for unauthorised users (never throws), else the switcher state.
@@ -134,7 +138,17 @@ def get_context(txt: str | None = None, user_type: str | None = None, limit: int
 		"current_user": _user_info(frappe.session.user),
 		"is_switched": real_user != frappe.session.user,
 		"users": users,
+		"stale": _stale_users(cached),
 	}
+
+
+def _stale_users(cached: list | str | None) -> list[str]:
+	names = frappe.parse_json(cached) if isinstance(cached, str) else (cached or [])
+	names = [n for n in names if isinstance(n, str)][:200]
+	if not names:
+		return []
+	alive = set(frappe.get_all("User", filters={"name": ["in", names], "enabled": 1}, pluck="name", ignore_permissions=True))
+	return [n for n in names if n not in alive]
 
 
 def _find_users(real_user: str, txt: str | None, user_type: str | None, limit: int) -> list[dict]:

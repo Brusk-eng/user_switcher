@@ -159,6 +159,21 @@
 			storage(localStorage, this.pins_key(), JSON.stringify(ordered));
 		},
 
+		// Forget deleted or disabled users that are still cached in this browser
+		forget(names) {
+			const gone = new Set(names);
+			if (!gone.size) return;
+			const usage = this.usage();
+			Object.keys(usage).forEach((n) => gone.has(n) && delete usage[n]);
+			storage(localStorage, this.usage_key(), JSON.stringify(usage));
+			const pins = this.pins().filter((p) => !gone.has(p.name));
+			storage(localStorage, this.pins_key(), JSON.stringify(pins));
+		},
+
+		cached_names() {
+			return [...new Set([...Object.keys(this.usage()), ...this.pins().map((p) => p.name)])];
+		},
+
 		toggle_pin(u) {
 			let pins = this.pins();
 			if (pins.some((p) => p.name === u.name)) pins = pins.filter((p) => p.name !== u.name);
@@ -587,7 +602,7 @@
 			return frappe
 				.call({
 					method: `${API}.get_context`,
-					args: { txt: state.txt, user_type: state.user_type },
+					args: { txt: state.txt, user_type: state.user_type, cached: JSON.stringify(store.cached_names()) },
 					type: "GET",
 				})
 				.then((r) => {
@@ -597,6 +612,7 @@
 						$list.html(empty_state(t("You are not permitted to switch users.")));
 						return;
 					}
+					store.forget(ctx.stale || []);
 					state.ctx = ctx;
 					who.real = ctx.real_user.name;
 					who.real_full_name = display_name(ctx.real_user);
