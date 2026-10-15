@@ -701,6 +701,46 @@
 	height: 14px;
 }
 
+/* Drag to reorder pinned users */
+#us-floating-container .us-item {
+	position: relative;
+}
+
+/* Sits in the row's left padding so pinned rows line up with the rest */
+#us-floating-container .us-grip {
+	position: absolute;
+	left: -1px;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	width: 10px;
+	color: var(--us-muted);
+	cursor: grab;
+	opacity: 0;
+	transition: opacity 0.12s;
+}
+
+#us-floating-container .us-grip svg {
+	width: 12px;
+	height: 12px;
+}
+
+#us-floating-container .us-item.is-active .us-grip {
+	opacity: 0.8;
+}
+
+#us-floating-container .us-item.is-dragging {
+	opacity: 0.4;
+}
+
+#us-floating-container .us-item.us-drop-before {
+	box-shadow: 0 -2px 0 0 var(--us-accent);
+}
+
+#us-floating-container .us-item.us-drop-after {
+	box-shadow: 0 2px 0 0 var(--us-accent);
+}
+
 /* ---------- "Test user" button in the filter row ---------- */
 
 #us-floating-container .us-new {

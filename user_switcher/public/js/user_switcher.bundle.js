@@ -25,6 +25,7 @@
 		enter: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>`,
 		star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>`,
 		plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`,
+		grip: `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>`,
 		chevron_right: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`,
 		chevron_left: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>`,
 		shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>`,
@@ -160,6 +161,16 @@
 
 		is_pinned(name) {
 			return this.pins().some((p) => p.name === name);
+		},
+
+		// Drop `name` just before (or, with `after`, just after) `target` in the pinned order
+		move_pin(name, target, after) {
+			const pins = this.pins();
+			const moved = pins.find((p) => p.name === name);
+			if (!moved || name === target || !pins.some((p) => p.name === target)) return;
+			const rest = pins.filter((p) => p !== moved);
+			rest.splice(rest.findIndex((p) => p.name === target) + (after ? 1 : 0), 0, moved);
+			storage(localStorage, this.pins_key(), JSON.stringify(rest));
 		},
 
 		toggle_pin(u) {
@@ -575,9 +586,9 @@
 			const section = (title, rows) => {
 				if (!rows.length) return;
 				if (pinned.length || most_used.length) $list.append(`<div class="us-group">${title}</div>`);
-				rows.forEach(({ u, uses }) => $list.append(item(u, ++index, uses)));
+				rows.forEach(({ u, uses, drag }) => $list.append(item(u, ++index, uses, drag)));
 			};
-			section(t("Pinned"), pinned.map((u) => ({ u })));
+			section(t("Pinned"), pinned.map((u) => ({ u, drag: pinned.length > 1 })));
 			section(t("Most used"), most_used.map((e) => ({ u: e.info, uses: e.count })));
 			section(t("All users"), others.map((u) => ({ u })));
 
@@ -585,7 +596,7 @@
 			($active.length ? $active : $list.find(".us-item").first()).addClass("is-active");
 		}
 
-		function item(u, index, uses) {
+		function item(u, index, uses, drag) {
 			const website = u.user_type === "Website User" ? `<span class="us-chip us-chip--web">${t("Website")}</span>` : "";
 			const key = index <= 9 ? `<kbd class="us-num">${index}</kbd>` : `<span class="us-num us-num--none"></span>`;
 			const pinned = store.is_pinned(u.name);
@@ -593,6 +604,7 @@
 			const $item = $(`
 				<div class="us-item" role="option" tabindex="-1" title="${esc(title)}">
 					${key}
+					${drag ? `<span class="us-grip" title="${t("Drag to reorder")}">${ICONS.grip}</span>` : ""}
 					${avatar(u)}
 					<div class="us-item-text">
 						<span class="us-item-name">${esc(display_name(u))} ${website}</span>
@@ -616,6 +628,40 @@
 				store.toggle_pin(u);
 				paint_list();
 			});
+
+			if (drag) {
+				const clear_marks = () => $list.find(".us-item").removeClass("us-drop-before us-drop-after");
+				const is_after = (e) => {
+					const box = $item[0].getBoundingClientRect();
+					return e.originalEvent.clientY > box.top + box.height / 2;
+				};
+				$item
+					.attr("draggable", "true")
+					.on("dragstart", (e) => {
+						state.drag_name = u.name;
+						e.originalEvent.dataTransfer.effectAllowed = "move";
+						e.originalEvent.dataTransfer.setData("text/plain", u.name);
+						$item.addClass("is-dragging");
+					})
+					.on("dragend", () => {
+						state.drag_name = null;
+						$item.removeClass("is-dragging");
+						clear_marks();
+					})
+					.on("dragover", (e) => {
+						if (!state.drag_name || state.drag_name === u.name) return;
+						e.preventDefault();
+						clear_marks();
+						$item.addClass(is_after(e) ? "us-drop-after" : "us-drop-before");
+					})
+					.on("drop", (e) => {
+						e.preventDefault();
+						if (!state.drag_name) return;
+						store.move_pin(state.drag_name, u.name, is_after(e));
+						state.drag_name = null;
+						paint_list();
+					});
+			}
 			return $item;
 		}
 
