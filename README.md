@@ -1,8 +1,8 @@
 # User Switcher
 
-**Switch between user accounts in one keystroke, so you can see exactly what each user sees.**
+**Switch between user accounts with one key. See exactly what each user sees.**
 
-User Switcher is a Frappe / ERPNext app for developers, implementers and QA teams. It adds a floating switcher to every Desk and website page. Use it to check permissions, workflows, dashboards and portal pages as any user, then come back with one key.
+User Switcher is a Frappe and ERPNext app for developers, implementers, and QA teams. It adds a floating switcher to every Desk page and website page. Use it to check permissions, workflows, dashboards, and portal pages as any user. Return to your own account with one key.
 
 ![Frappe v16](https://img.shields.io/badge/Frappe-v16-0089FF)
 ![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-3776AB)
@@ -17,8 +17,11 @@ User Switcher is a Frappe / ERPNext app for developers, implementers and QA team
 
 <p align="center"><img src="docs/screenshots/desk-overview-light.png" alt="The switcher open on the ERPNext Desk home page" width="900"></p>
 
+> [!NOTE]
+> The screenshots show an earlier version of the screen. The layout, the pinned-user rows, and the role panel have changed since then.
+
 > [!WARNING]
-> This is a development and testing tool. It is **off unless `developer_mode` is on** or you enable it for the site (see [Configuration](#configuration)). Every switch is logged. Don't enable it on production unless you mean to.
+> This is a development and testing tool. It is off by default. It works only when **both** `developer_mode` and `user_switcher_enabled` are on (see [Configuration](#configuration)). Every switch is logged. Do not turn it on for a live site unless you accept the risk.
 
 ---
 
@@ -42,16 +45,20 @@ User Switcher is a Frappe / ERPNext app for developers, implementers and QA team
 
 | | |
 |---|---|
-| **Floating switcher on every page** | Works in Desk (`/app`) and on website and portal pages. It shows the user you're viewing as, and gets an amber ring while you're switched. |
-| **Pinned users** | Star any user to keep them at the top. Pinned users always keep numbers 1, 2, 3…, so the number keys stay the same. |
-| **Most used** | Users you switch to often come next, ranked by how often and how recently you picked them. |
-| **Keyboard first** | Open with `Ctrl+Shift+S` and press `1`–`9` to switch. `Ctrl+Shift+A` takes you back to Administrator from anywhere. |
-| **Ctrl+K integration** | Type `su jane` or `switch to jane` in Frappe's search bar (awesome bar). |
-| **"Viewing as" banner** | While switched, a thin amber frame and a "Viewing as … · Back" pill appear on every page. They never block clicks. |
-| **Create test users** | Make a user with chosen roles from inside the switcher, then switch into them right away. No welcome email is sent. |
-| **Search and filters** | Search by name or email, filter by System or Website users, and see each user's main role at a glance. |
-| **Audit trail** | Every switch is written to the **Activity Log**. Documents changed while switched are tagged as impersonated in their Version history. |
-| **Looks native** | Uses Frappe's theme colours, so it follows light and dark mode. Works on small screens and respects reduced-motion settings. |
+| **Floating switcher on every page** | Works in Desk (`/app`) and on website and portal pages. It shows the user you are viewing as. It gets an amber ring while you are switched. |
+| **Pinned users** | Click the star on a user to pin that user at the top. Each pinned user keeps a fixed number (1, 2, 3, and so on), even after you switch. |
+| **Drag to reorder** | Drag a pinned user up or down. The other rows slide out of the way, and the new order is saved when you drop. |
+| **Most used** | Users you switch to often come next. They are ranked by how often and how recently you pick them. |
+| **Keyboard first** | Press `Ctrl+Shift+S` to open the switcher. Press `1` to `9` to switch. Press `Ctrl+Shift+A` to go back from any page. |
+| **Ctrl+K integration** | Type `su jane` or `switch to jane` in the Frappe search bar (awesome bar). |
+| **"Viewing as" banner** | While you are switched, a thin amber frame and a "Viewing as … · Back" pill show on every page. They never block clicks. |
+| **Manage roles** | Give or remove roles for the user you are viewing as. The roles that user already has show first, ticked. |
+| **Create test users** | Make a user with the roles you choose. Switch into that user right away. The app sends no welcome email. |
+| **Search and filters** | Search by name or email. Filter by System users or Website users. |
+| **How-to guide** | Click the **ⓘ** button next to **Hide**. A short guide in plain language explains every feature. |
+| **Audit trail** | Every switch is saved in the read-only **User Switch Log**. A report lists the log with filters. |
+| **Safe by default** | It needs two settings. It ends a switched session when the real user loses the right to switch. It logs refused requests. |
+| **Looks native** | It uses the Frappe theme colors, so it follows light mode and dark mode. It works on small screens and respects the reduced-motion setting. |
 
 ---
 
@@ -68,9 +75,9 @@ bench build --app user_switcher
 bench --site $SITE clear-cache
 ```
 
-Then turn it on for the site (see [Configuration](#configuration)): `developer_mode` and `user_switcher_enabled`. Hard-refresh the browser (`Ctrl+Shift+R`). The switcher button appears at the bottom-right of every page.
+Then turn the app on for the site. Set `developer_mode` and `user_switcher_enabled` (see [Configuration](#configuration)). Hard-refresh the browser with `Ctrl+Shift+R`. The switcher button shows at the bottom-right of every page.
 
-**Requirements:** Frappe v16 and Python 3.14 or newer. ERPNext is optional; the app works on plain Frappe.
+**Requirements:** Frappe v16 and Python 3.14 or newer. ERPNext is optional. The app works on plain Frappe.
 
 ---
 
@@ -79,25 +86,37 @@ Then turn it on for the site (see [Configuration](#configuration)): `developer_m
 ### Switching users
 
 1. Click the round avatar button at the bottom-right, or press **`Ctrl+Shift+S`**.
-2. Type to search, or use the arrow keys, or press the user's number (**`1`–`9`**).
-3. The page reloads as that user. Desk opens at `/app`, because the page you were on may not be allowed for them.
+2. Type in the search box, use the arrow keys, or press the number of a user (**`1`** to **`9`**).
+3. The page reloads as that user.
+
+Desk opens at `/app` after a switch. The page you were on may not be allowed for the new user.
 
 ### Going back
 
-Any of these takes you back to the account you logged in with:
+Use any of these to return to the account you logged in with:
 
-- **`Ctrl+Shift+A`** from any page
-- **`0`** while the switcher is open
-- The **Back to …** button in the switcher or in the amber banner
-- `su back` in the Ctrl+K search bar
+- Press **`Ctrl+Shift+A`** on any page.
+- Press **`0`** while the switcher is open.
+- Click the **Back to …** button in the switcher or in the amber banner.
+- Type `su back` in the Ctrl+K search bar.
 
-### Pinning favourites
+### Pinned users
 
-Hover a user and click **☆**. Pinned users go to the top and keep their numbers. Click the star again to unpin.
+1. Hover over a user and click the star **☆**. The user moves to the **Pinned** group at the top.
+2. Click the star again to unpin.
+
+Pinned users keep their numbers. The numbers do not change after you switch.
+
+If you are viewing as a pinned user, that user stays in its numbered place with a green **Current** tag. A click or a number key on that row does nothing, because you are already that user.
+
+To change the order, drag a pinned user up or down. The other pinned users slide out of the way as you drag. Release the mouse to save the order. Release the mouse outside the switcher to cancel.
+
+> [!NOTE]
+> Drag and drop needs a mouse. It does not work on touch screens. The order is saved in your browser, not on the server.
 
 ### Ctrl+K search bar
 
-Press **`Ctrl+K`** in Desk and type any of:
+Press **`Ctrl+K`** in Desk and type one of these:
 
 ```
 su jane
@@ -107,26 +126,48 @@ login as jane
 su back
 ```
 
-These results appear alongside Frappe's own. A plain name search (`jane`) also offers a switch, ranked lower.
+The results show next to the normal Frappe results. A plain name search (`jane`) also offers a switch, but ranks it lower.
 
 <p align="center"><img src="docs/screenshots/ctrl-k-switch-light.png" alt="Ctrl+K search showing a 'Switch to EmmaTaylor' result" width="720"></p>
 
 ### Creating a test user
 
 1. Open the switcher and click **+ Test user**.
-2. Enter a full name. The email fills in as `test.<name>@example.com`, and you can edit it.
-3. Tick the roles. The form shows whether the result will be a **System User** or a **Website User**, which Frappe decides from the roles.
-4. Click **Create & switch**, or just **Create**.
+2. Enter a full name. The email fills in as `<name>@example.com`. You can change it.
+3. Tick the roles. The form shows if the result is a **System User** or a **Website User**. Frappe decides this from the roles.
+4. Click **Create & switch**, or click **Create**.
 
-Test users get no welcome email. Their bio says *"Test user created with User Switcher by …"*, so they're easy to find and clean up later.
+The app sends no welcome email to a test user. The bio of the user says "Test user created with User Switcher by …". Use the bio to find and delete test users later.
 
 ### Managing roles
 
-1. Open the switcher and click the shield icon next to the name at the top. It edits the user you are signed in as (or viewing as).
-2. Tick or untick roles, for example **HR Manager**, then click **Save roles**.
-3. The page reloads so the new roles apply.
+1. Open the switcher.
+2. Click **Manage roles** under the name at the top. This changes the roles of the user you are viewing as, or your own roles if you are not switched.
+3. Read the list. The roles the user already has show first, under **Current roles**, and they are ticked.
+4. Tick the roles to add. Untick the roles to remove.
+5. Click **Save roles**. The button stays off until you change something.
+6. The page reloads so the new roles apply.
 
-You can't edit Administrator, Guest or other System Managers, and you can't remove System Manager from your own account. Roles are saved on the User, so the change shows in its Version history.
+These rules apply:
+
+- The **Manage roles** button does not show when you are viewing as Administrator.
+- You cannot edit Guest or other System Managers.
+- You cannot remove System Manager from your own account.
+- The roles All, Guest, Administrator, and Desk User are never offered.
+
+Roles are saved on the User. The change shows in the Version history of that user.
+
+### How-to guide
+
+Click the **ⓘ** button next to **Hide** at the bottom of the switcher. The guide opens inside the switcher. Click the back arrow, click **ⓘ** again, or press `Esc` to return to the list.
+
+### Hiding the switcher
+
+Click **Hide** at the bottom of the switcher. The button stays hidden until your next browser session. Press `Ctrl+Shift+S` to bring it back.
+
+### Audit log
+
+Every switch creates a record in the **User Switch Log**. A System Manager can open the **User Switch Log** list from the Desk search bar. Administrator can also open the **User Switch Log Report**. It filters by date, real user, target user, action, and IP address. The log is read-only. Nobody can edit or delete a record in the app.
 
 ---
 
@@ -135,21 +176,23 @@ You can't edit Administrator, Guest or other System Managers, and you can't remo
 | Shortcut | Where | Action |
 |---|---|---|
 | `Ctrl+Shift+S` / `⌘+Shift+S` | Any page | Open or close the switcher |
-| `1` – `9` | Switcher open, search box empty | Switch to that numbered user |
+| `1` – `9` | Switcher open, search box empty | Switch to the user with that number |
 | `0` | Switcher open, while switched | Switch back |
 | `↑` `↓` `Enter` | Switcher open | Move through the list and switch |
-| `Esc` | Switcher open | Close, or leave the test-user form |
+| `Esc` | Switcher open | Close the guide, leave a form, or close the switcher |
 | `Ctrl+Shift+A` / `⌘+Shift+A` | Any page | Switch back to the account you logged in with (usually Administrator) |
 | `Ctrl+K` → `su <name>` | Desk | Switch from the search bar |
 
+The number keys do nothing while the how-to guide or a form is open.
+
 > [!NOTE]
-> `Ctrl+S` isn't used because it is Frappe's **Save** shortcut. `Ctrl+Shift+A` replaces Chrome's "Search tabs" shortcut, but only on your Frappe site's pages.
+> The app does not use `Ctrl+S`, because Frappe uses it for **Save**. `Ctrl+Shift+A` replaces the "Search tabs" shortcut of Chrome, but only on the pages of your Frappe site.
 
 ---
 
 ## Configuration
 
-The switcher is available only when **both** settings are on in the site's config. `developer_mode` alone is not enough, because it is often left on by habit, or by mistake on a live site.
+The switcher works only when **both** settings are on in the site config. `developer_mode` alone is not enough, because people often leave it on by habit or by mistake on a live site.
 
 ```bash
 bench --site $SITE set-config developer_mode 1
@@ -157,31 +200,34 @@ bench --site $SITE set-config user_switcher_enabled 1
 bench restart
 ```
 
-To turn it off, remove either setting. The button disappears, the API refuses all requests, and any session someone is switched into is ended on its next request.
+To turn the app off, remove either setting. The button disappears and the API refuses all requests. A session that someone switched into ends on its next request.
 
-**Who can switch:** Administrator, and any user with the **System Manager** role. A System Manager cannot switch into Administrator, or into another System Manager unless they created that user and it has no password set. To change this, edit `ALLOWED_ROLES` in `user_switcher/api.py`.
+**Who can switch:** Administrator, and any enabled user with the **System Manager** role. A System Manager cannot switch into Administrator. A System Manager also cannot switch into another System Manager, unless the first user created the second user and the second user has no password. To change the allowed roles, edit `ALLOWED_ROLES` in `user_switcher/api.py`.
+
+**Logs:** the app writes refused requests and ended sessions to `logs/user_switcher.log` in the bench folder. It writes the same lines to `sites/$SITE/logs/user_switcher.log`.
 
 ---
 
 ## Security model
 
-User Switcher gives a System Manager the power to act as other users. It's built so that power can't reach further than it should.
+User Switcher lets a System Manager act as other users. The app limits this power with the rules below.
 
-| Rule | How it's enforced |
+| Rule | How the app enforces it |
 |---|---|
-| Only allowed users can switch | Every API call is checked on the server. Hiding the button in the browser is only a convenience. |
-| Permission follows the **real** user | The check uses the account that actually logged in. Switching into a user with fewer rights doesn't stop you switching back. |
-| No escalation to Administrator | Only the real Administrator can switch into `Administrator`. A System Manager can't. |
-| No cross-site request forgery | Switching, creating users and changing roles only accept POST requests, protected by Frappe's CSRF token. |
-| Links can't switch you | `/app/user-switch/<user>` always asks for confirmation. Frappe copies any `?name=value` in a link into the page's options, so the page never trusts a flag from the link. Picking a result in the search bar switches straight away through a separate in-page handler. |
-| Two switches, not one | It needs `developer_mode` **and** `user_switcher_enabled`. Only an enabled user can switch. |
-| Real sessions | A proper new session is created (the same mechanism as Frappe's built-in impersonation), and the old one is deleted. |
-| No orphaned sessions | If the real user is disabled, loses System Manager, or the switcher is turned off, the session they switched into ends on its next request. |
-| Refusals are logged | Refused switch, role and test-user requests are written to the site's `logs/user_switcher.log` with the user, target and IP. |
-| Auditable | Every switch is written to the read-only **User Switch Log** (who, into whom, when, IP). The log is written first, so if it fails the switch does not happen. Role changes are saved on the User, so they show in its Version history, tagged as impersonated when made while switched. |
-| Safe output | User names, emails and image URLs are HTML-escaped wherever they're shown, including the search-bar results. |
-| Test-user safety | Role names are checked against the Role list. `Administrator`, `All`, `Guest` and `Desk User` are never assigned. |
-| Role management | Only people who may switch can change roles. Administrator and Guest can't be edited, other System Managers are off limits like they are for switching, and you can't remove System Manager from your own account. |
+| Only allowed users can switch | The server checks every API call. Hiding the button in the browser is only a convenience. |
+| Two settings, not one | The app needs `developer_mode` **and** `user_switcher_enabled`. Only an enabled user can switch. |
+| Permission follows the **real** user | The check uses the account that logged in. Switching into a user with fewer rights does not stop you from switching back. |
+| No escalation to Administrator | Only the real Administrator can switch into `Administrator`. A System Manager cannot. |
+| No cross-site request forgery | Switching, creating users, and changing roles accept only POST requests, protected by the Frappe CSRF token. |
+| Links cannot switch you | The page `/app/user-switch/<user>` always asks for confirmation. Frappe copies any `?name=value` in a link into the page options, so the page never trusts a flag from a link. A result picked in the search bar switches straight away through a separate handler in the page. |
+| Real sessions | The app creates a new session, with the same method as the Frappe Impersonate feature. It then deletes the old session. |
+| No orphaned sessions | A switched session ends on its next request if the real user is disabled, loses System Manager, or the app is turned off. |
+| Auditable | Every switch is saved in the read-only **User Switch Log** (who, into whom, when, IP address). The app writes the log first. If the write fails, the switch does not happen. |
+| Role changes are traceable | The app saves role changes on the User. They show in the Version history, tagged as impersonated when someone makes them while switched. |
+| Refusals are logged | The app writes refused switch, role, and test-user requests to `logs/user_switcher.log`, with the user, the target, and the IP address. |
+| Safe output | The app escapes names, emails, and image URLs as HTML wherever it shows them, including the search-bar results. |
+| Test-user safety | The app checks role names against the Role list. It never assigns `Administrator`, `All`, `Guest`, or `Desk User`. |
+| Role management limits | Only a user who can switch can change roles. Administrator and Guest cannot be edited. Other System Managers are off limits, as they are for switching. A user cannot remove System Manager from their own account. |
 
 ---
 
@@ -191,33 +237,41 @@ User Switcher gives a System Manager the power to act as other users. It's built
 ┌───────────────── browser ─────────────────┐        ┌──────────── server ─────────────┐
 │ user_switcher.bundle.js                   │        │ user_switcher/api.py            │
 │   floating widget  ── get_context ────────┼──GET──►│   _can_switch(real user)        │
-│   Ctrl+Shift+S/A   ── switch_to_user ─────┼─POST──►│   login_manager.login_as()      │
-│   Ctrl+K handler   ── switch_back ────────┼─POST──►│   session.set_impersonated()    │
-│   banner           ── create_test_user ───┼─POST──►│   delete old session, log it    │
+│   Ctrl+Shift+S/A   ── switch_to_user ─────┼─POST──►│   write User Switch Log         │
+│   Ctrl+K handler   ── switch_back ────────┼─POST──►│   login_manager.login_as()      │
+│   Manage roles     ── set_user_roles ─────┼─POST──►│   session.set_impersonated()    │
+│   banner           ── create_test_user ───┼─POST──►│   delete the old session        │
 │                                           │        │                                 │
 │ localStorage: pins + usage, per real user │        │ hooks: extend_bootinfo,         │
-└───────────────────────────────────────────┘        │        awesomebar_search        │
-                                                     └─────────────────────────────────┘
+│                                           │        │        awesomebar_search,       │
+│                                           │        │        before_request           │
+└───────────────────────────────────────────┘        └─────────────────────────────────┘
 ```
 
-- **Switching** creates a new session with `LoginManager.login_as()` and marks it with `impersonated_by = <real user>`. That's the same flag Frappe's own **Impersonate** feature uses, so Desk's "Impersonating" pill and Version-history tagging work as usual.
-- **Assets** are loaded with `app_include_*` (Desk) and `web_include_*` (website) as Frappe bundles. Every build gets a new file name, so browsers never run a stale copy.
-- **Boot:** the `extend_bootinfo` hook sets `frappe.boot.user_switcher_allowed`, so Desk makes no extra request when a page loads. Website pages ask once per browser session and remember the answer.
-- **Ctrl+K:** the `awesomebar_search` hook returns the switch results. A capture-phase listener catches the selection before Frappe routes anywhere, so no in-between page loads.
-- **Pins and usage** live in `localStorage`, stored separately for each real user. They stay in that browser and are never sent to the server.
+- **Switching:** the app writes the User Switch Log. It then creates a new session with `LoginManager.login_as()` and marks the session with `impersonated_by = <real user>`. This is the same flag the Frappe **Impersonate** feature uses. The "Impersonating" pill in Desk and the tags in the Version history work as usual.
+- **Assets:** Frappe loads the app files with `app_include_*` (Desk) and `web_include_*` (website). Every build has a new file name, so a browser never runs an old copy.
+- **Boot:** the `extend_bootinfo` hook sets `frappe.boot.user_switcher_allowed`. Desk makes no extra request when a page loads. Website pages ask once for each browser session and remember the answer.
+- **Ctrl+K:** the `awesomebar_search` hook returns the switch results. A listener catches the selection before Frappe changes the route, so no page loads in between.
+- **Orphaned sessions:** the `before_request` hook checks every switched session. It ends the session if the real user may no longer switch.
+- **Pins and usage:** the browser keeps them in `localStorage`, separately for each real user. They stay in that browser. The app never sends them to the server.
+- **Drag and drop:** the browser swaps the pinned rows in the page while you drag and animates the move. It saves the new order only when you drop.
 
 ### Project layout
 
 ```
 user_switcher/
 ├── user_switcher/
-│   ├── api.py                         # permission checks, switching, test users, Ctrl+K hook
-│   ├── boot.py                        # frappe.boot.user_switcher_allowed
-│   ├── hooks.py                       # asset includes, extend_bootinfo, awesomebar_search
+│   ├── api.py                          # access checks, switching, roles, test users, Ctrl+K hook
+│   ├── boot.py                         # frappe.boot.user_switcher_allowed
+│   ├── hooks.py                        # asset includes, boot, search, before_request
 │   ├── public/
-│   │   ├── js/user_switcher.bundle.js # widget, shortcuts, banner, Ctrl+K handler
+│   │   ├── js/user_switcher.bundle.js  # widget, shortcuts, banner, guide, drag and drop
 │   │   └── css/user_switcher.bundle.css
-│   └── user_switcher/page/user_switch/ # /app/user-switch/<user> fallback page
+│   ├── tests/test_api.py               # server tests
+│   └── user_switcher/
+│       ├── doctype/user_switch_log/    # read-only audit log
+│       ├── report/user_switch_log_report/
+│       └── page/user_switch/           # /app/user-switch/<user> confirm page
 └── docs/screenshots/
 ```
 
@@ -225,15 +279,15 @@ user_switcher/
 
 ## API reference
 
-All methods live in `user_switcher.api` and require the caller's **real** user to be allowed to switch.
+All methods are in `user_switcher.api`. The **real** user of the caller must be allowed to switch.
 
 | Method | HTTP | Arguments | Returns |
 |---|---|---|---|
-| `get_context` | GET | `txt?`, `user_type?` (`System User` / `Website User`), `limit=30` (max 100, `0` = permission check only) | `{allowed, real_user, current_user, is_switched, users[]}`. Each user includes `roles`. |
+| `get_context` | GET | `txt?`, `user_type?` (`System User` or `Website User`), `limit=30` (maximum 100, `0` only checks permission) | `{allowed, real_user, current_user, is_switched, users[]}`. Each user includes `roles`. |
 | `switch_to_user` | POST | `target_user` | `{current_user}`. Sets the new session cookie. |
-| `switch_back` | POST | none | Same as `switch_to_user(<real user>)` |
+| `switch_back` | POST | none | The same as `switch_to_user(<real user>)` |
 | `get_assignable_roles` | GET | none | `[{name, desk_access}]` |
-| `get_user_roles` | GET | `user` | `["Role", ...]` (automatic roles left out) |
+| `get_user_roles` | GET | `user` | `["Role", ...]` (without the automatic roles) |
 | `set_user_roles` | POST | `user`, `roles` (list or JSON) | `{name, user_type, roles}` |
 | `create_test_user` | POST | `full_name`, `email`, `roles` (list or JSON), `switch=1` | `{name, full_name, user_type, roles}` |
 
@@ -247,7 +301,7 @@ frappe.call({
 }).then(() => (window.location.href = "/app"));
 ```
 
-From other client code you can also call `frappe.user_switcher.switch_to({ name })` and `frappe.user_switcher.switch_back()`. `frappe.user_switcher.open()` is available once the widget has rendered.
+Other client code can call `frappe.user_switcher.switch_to({ name })` and `frappe.user_switcher.switch_back()`. The function `frappe.user_switcher.open()` is available after the widget renders.
 
 ---
 
@@ -255,12 +309,15 @@ From other client code you can also call `frappe.user_switcher.switch_to({ name 
 
 | Problem | Fix |
 |---|---|
-| The button doesn't appear | Check that `developer_mode` is set and that you're a System Manager. Then run `bench build --app user_switcher`, `bench --site $SITE clear-cache`, and hard-refresh the browser. |
-| Old behaviour or `[object Object]` labels | A stale build. Rebuild, clear the cache, and hard-refresh. |
-| `su jane` doesn't show up in Ctrl+K | Desk only reads search hooks when it first loads. Run `bench --site $SITE clear-cache` and hard-refresh. |
-| `/app/user-switch` returns "Page not found" | Run `bench --site $SITE migrate` so the page gets created. |
-| "Only Administrator can switch into Administrator" | Working as intended. Log in as Administrator to use that switch. |
-| The widget covers something on the page | Click **Hide** in the switcher footer. It stays hidden until the next browser session, and `Ctrl+Shift+S` brings it back. |
+| The button does not show | Make sure `developer_mode` and `user_switcher_enabled` are both set. Make sure you are Administrator or a System Manager. Run `bench build --app user_switcher`, `bench restart`, and `bench --site $SITE clear-cache`. Then hard-refresh the browser. |
+| Old behavior or `[object Object]` labels | The build is old. Rebuild, clear the cache, and hard-refresh the browser. |
+| `su jane` does not show in Ctrl+K | Desk reads the search hooks only when it first loads. Run `bench --site $SITE clear-cache` and hard-refresh the browser. |
+| `/app/user-switch` shows "Page not found" | Run `bench --site $SITE migrate` to create the page. |
+| "You are not permitted to switch into this user" | The target is Administrator or another System Manager. Log in as Administrator to switch into Administrator. |
+| The **Manage roles** button is missing | You are viewing as Administrator. The app does not edit the roles of Administrator. |
+| Drag and drop does not work | It needs a mouse. It does not work on touch screens. |
+| You are signed out while switched | The real user lost the right to switch, or an admin turned the app off. Log in again. Check `logs/user_switcher.log`. |
+| The widget covers part of the page | Click **Hide** in the switcher. It stays hidden until the next browser session. Press `Ctrl+Shift+S` to bring it back. |
 
 ---
 
@@ -268,11 +325,14 @@ From other client code you can also call `frappe.user_switcher.switch_to({ name 
 
 ```bash
 cd apps/user_switcher
-pre-commit install          # ruff, eslint, prettier, pyupgrade
-bench build --app user_switcher --watch   # or: bench start
+pre-commit install                                    # ruff, eslint, prettier, pyupgrade
+bench build --app user_switcher --watch               # or: bench start
+bench --site $SITE run-tests --app user_switcher      # server tests
 ```
 
-Contributions are welcome. Please [open an issue](https://github.com/renish-1111/user_switcher/issues) describing the change before sending a large pull request.
+The tests need a site with the app installed. They roll back their changes. Where the code commits (the `before_request` hook), the test replaces the commit.
+
+Contributions are welcome. [Open an issue](https://github.com/renish-1111/user_switcher/issues) that describes the change before you send a large pull request.
 
 ---
 
