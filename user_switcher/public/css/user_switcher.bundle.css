@@ -221,7 +221,7 @@
 	position: absolute;
 	right: 0;
 	bottom: 54px;
-	width: 380px;
+	width: 460px;
 	max-width: calc(100vw - 40px);
 	max-height: min(760px, calc(100vh - 100px));
 	display: flex;
@@ -976,7 +976,7 @@
 }
 
 #us-floating-container.us-roles-mode .us-card {
-	width: 480px;
+	width: 520px;
 	max-width: calc(100vw - 24px);
 	max-height: min(760px, calc(100vh - 100px));
 }
