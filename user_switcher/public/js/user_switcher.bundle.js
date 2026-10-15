@@ -163,14 +163,14 @@
 			return this.pins().some((p) => p.name === name);
 		},
 
-		// Drop `name` just before (or, with `after`, just after) `target` in the pinned order
-		move_pin(name, target, after) {
+		// Save the new order of the pins that are on screen; pins hidden by the current filter keep their slots
+		reorder_pins(names) {
 			const pins = this.pins();
-			const moved = pins.find((p) => p.name === name);
-			if (!moved || name === target || !pins.some((p) => p.name === target)) return;
-			const rest = pins.filter((p) => p !== moved);
-			rest.splice(rest.findIndex((p) => p.name === target) + (after ? 1 : 0), 0, moved);
-			storage(localStorage, this.pins_key(), JSON.stringify(rest));
+			const by_name = Object.fromEntries(pins.map((p) => [p.name, p]));
+			const queue = names.filter((n) => by_name[n]);
+			const shown = new Set(queue);
+			const ordered = pins.map((p) => (shown.has(p.name) ? by_name[queue.shift()] : p));
+			storage(localStorage, this.pins_key(), JSON.stringify(ordered));
 		},
 
 		toggle_pin(u) {
@@ -467,19 +467,65 @@
 
 		// ---------- drag to reorder pinned users ----------
 
-		// Handled on the whole list, not per row, so a drop in a gap or past either end still lands:
-		// the pinned row nearest the cursor is the target.
-		function drop_target(client_y) {
-			const rows = $list.find(".us-item[draggable=true]").toArray();
-			for (const row of rows) {
-				const box = row.getBoundingClientRect();
-				if (client_y < box.top + box.height / 2) return { row, after: false };
-			}
-			return rows.length ? { row: rows[rows.length - 1], after: true } : null;
+		// Rows swap live while you drag: note where every pinned row is (FLIP), move the dragged row
+		// in the DOM, then slide each row from its old spot to the new one. The order is saved on drop;
+		// releasing outside the list cancels and puts everything back.
+		const reduced_motion = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+		const pinned_rows = () => $list.find(".us-item[draggable=true]").toArray();
+
+		function renumber(rows) {
+			rows.forEach((row, i) => {
+				row.dataset.index = i + 1;
+				const $num = $(row).find("kbd.us-num");
+				if (i < 9) $num.text(i + 1);
+			});
 		}
 
-		function clear_drop_marks() {
-			$list.find(".us-item").removeClass("us-drop-before us-drop-after");
+		function move_dragged(client_y) {
+			const rows = pinned_rows();
+			const dragged = rows.find((r) => r.dataset.name === state.drag_name);
+			if (!dragged) return;
+
+			// Layout offsets ignore in-flight slide transforms, so a row mid-slide can't flip the choice back
+			const y = client_y - $list[0].getBoundingClientRect().top + $list[0].scrollTop;
+			const others = rows.filter((r) => r !== dragged);
+			const before = others.find((r) => y < r.offsetTop + r.offsetHeight / 2);
+			const last = others[others.length - 1];
+			if (before ? dragged.nextElementSibling === before : !last || last.nextElementSibling === dragged) return;
+
+			const first_top = new Map(rows.map((r) => [r, r.getBoundingClientRect().top]));
+			before ? before.before(dragged) : last.after(dragged);
+
+			rows.forEach((r) => r.getAnimations().forEach((a) => a.id === "us-swap" && a.cancel()));
+			const after_rows = pinned_rows();
+			renumber(after_rows);
+			if (reduced_motion) return;
+			after_rows.forEach((r) => {
+				const dy = first_top.get(r) - r.getBoundingClientRect().top;
+				if (!dy) return;
+				r.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], {
+					id: "us-swap",
+					duration: 240,
+					easing: "cubic-bezier(0.2, 0.9, 0.3, 1)",
+				});
+			});
+		}
+
+		function finish_drag() {
+			const moved = state.drag_name;
+			const names = pinned_rows().map((r) => r.dataset.name);
+			if (state.dropped) store.reorder_pins(names);
+			const saved = state.dropped;
+			state.drag_name = null;
+			state.dropped = false;
+			paint_list(); // rebuilds rows from the saved order (or the old one, if cancelled)
+			if (saved) {
+				$list.find(`.us-item[data-name="${CSS.escape(moved)}"]`)
+					.addClass("us-settled")
+					.one("animationend", function () {
+						$(this).removeClass("us-settled");
+					});
+			}
 		}
 
 		$list
@@ -487,26 +533,13 @@
 				if (!state.drag_name) return;
 				e.preventDefault();
 				e.originalEvent.dataTransfer.dropEffect = "move";
-				clear_drop_marks();
-				const target = drop_target(e.originalEvent.clientY);
-				if (target && target.row.dataset.name !== state.drag_name) {
-					$(target.row).addClass(target.after ? "us-drop-after" : "us-drop-before");
-				}
+				move_dragged(e.originalEvent.clientY);
 			})
 			.on("drop", (e) => {
 				if (!state.drag_name) return;
 				e.preventDefault();
-				const target = drop_target(e.originalEvent.clientY);
-				if (target) store.move_pin(state.drag_name, target.row.dataset.name, target.after);
-				state.drag_name = null;
-				clear_drop_marks();
-				paint_list();
-			})
-			.on("dragleave", (e) => {
-				// relatedTarget is unreliable for drag events, so compare the pointer with the list's box
-				const box = $list[0].getBoundingClientRect();
-				const { clientX: x, clientY: y } = e.originalEvent;
-				if (x <= box.left || x >= box.right || y <= box.top || y >= box.bottom) clear_drop_marks();
+				move_dragged(e.originalEvent.clientY); // settle exactly where the pointer was released
+				state.dropped = true;
 			});
 
 		function fetch_users() {
@@ -678,15 +711,13 @@
 					.attr("draggable", "true")
 					.on("dragstart", (e) => {
 						state.drag_name = u.name;
+						state.dropped = false;
 						e.originalEvent.dataTransfer.effectAllowed = "move";
 						e.originalEvent.dataTransfer.setData("text/plain", u.name);
-						$item.addClass("is-dragging");
+						// A tick later, so the browser snapshots the normal-looking row as the drag image
+						setTimeout(() => $item.addClass("is-dragging"));
 					})
-					.on("dragend", () => {
-						state.drag_name = null;
-						$item.removeClass("is-dragging");
-						clear_drop_marks();
-					});
+					.on("dragend", finish_drag);
 			}
 			return $item;
 		}

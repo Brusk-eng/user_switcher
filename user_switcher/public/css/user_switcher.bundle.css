@@ -414,6 +414,7 @@
 
 /* List */
 #us-floating-container .us-list {
+	position: relative; /* rows' offsetTop is measured against the list while dragging */
 	flex: 1;
 	min-height: min(380px, 40vh);
 	overflow-y: auto;
@@ -738,16 +739,31 @@
 	opacity: 0.8;
 }
 
+/* While dragging, the row's slot shows as a faint dashed placeholder that the other rows slide around */
 #us-floating-container .us-item.is-dragging {
-	opacity: 0.4;
+	background: var(--us-hover);
+	outline: 1.5px dashed var(--us-muted);
+	outline-offset: -1.5px;
 }
 
-#us-floating-container .us-item.us-drop-before {
-	box-shadow: 0 -3px 0 0 var(--us-accent);
+#us-floating-container .us-item.is-dragging > * {
+	opacity: 0.35;
 }
 
-#us-floating-container .us-item.us-drop-after {
-	box-shadow: 0 3px 0 0 var(--us-accent);
+/* A short pulse on the row that was just dropped */
+#us-floating-container .us-item.us-settled {
+	animation: us-settle 0.7s ease-out;
+}
+
+@keyframes us-settle {
+	0% {
+		background: var(--us-hover);
+		box-shadow: 0 0 0 2px var(--us-accent);
+	}
+	100% {
+		background: transparent;
+		box-shadow: 0 0 0 2px transparent;
+	}
 }
 
 /* ---------- "Test user" button in the filter row ---------- */
