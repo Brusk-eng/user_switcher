@@ -196,3 +196,57 @@ class TestAccessGates(IntegrationTestCase):
 			self.assertRaises(frappe.PermissionError, api.switch_to_user, "someone@example.com")
 		logger.warning.assert_called_once()
 		self.assertEqual(logger.warning.call_args.args[1], "switch")
+
+
+class TestDoctypeAccess(IntegrationTestCase):
+	DOCTYPE = "ToDo"
+
+	def setUp(self):
+		frappe.set_user("Administrator")
+		self.conf = patch.object(frappe.local, "conf", frappe._dict(frappe.local.conf, developer_mode=1, user_switcher_enabled=1))
+		self.conf.start()
+		self.had_custom = bool(frappe.db.exists("Custom DocPerm", {"parent": self.DOCTYPE}))
+		if not frappe.db.exists("Role", "US Access Tester"):
+			frappe.get_doc({"doctype": "Role", "role_name": "US Access Tester", "desk_access": 1}).insert()
+
+	def tearDown(self):
+		self.conf.stop()
+		if not self.had_custom:
+			frappe.permissions.reset_perms(self.DOCTYPE)
+
+	def rule(self, role):
+		return frappe.db.get_value(
+			"Custom DocPerm", {"parent": self.DOCTYPE, "role": role, "permlevel": 0, "if_owner": 0}, ["read", "write", "create"], as_dict=True
+		)
+
+	def test_blocked_without_switcher(self):
+		self.conf.stop()
+		with patch.object(frappe.local, "conf", frappe._dict(developer_mode=0)):
+			self.assertRaises(frappe.PermissionError, api.get_doctype_access, self.DOCTYPE)
+		self.conf.start()
+
+	def test_child_and_core_doctypes_refused(self):
+		self.assertRaises(frappe.ValidationError, api.get_doctype_access, "Has Role")
+		self.assertRaises(frappe.ValidationError, api.get_doctype_access, "DocType")
+
+	def test_rights_follow_doctype(self):
+		rights = api.get_doctype_access("ToDo")["rights"]
+		self.assertIn("create", rights)
+		self.assertNotIn("submit", rights)
+
+	def test_grant_new_role_starts_from_nothing(self):
+		api.set_doctype_access(self.DOCTYPE, {"US Access Tester": {"read": 1, "create": 1}})
+		self.assertEqual(self.rule("US Access Tester"), {"read": 1, "write": 0, "create": 1})
+
+	def test_removing_basic_rights_drops_rule(self):
+		api.set_doctype_access(self.DOCTYPE, {"US Access Tester": {"read": 1}})
+		api.set_doctype_access(self.DOCTYPE, {"US Access Tester": {"read": 0}})
+		self.assertIsNone(self.rule("US Access Tester"))
+
+	def test_automatic_roles_refused(self):
+		self.assertRaises(frappe.ValidationError, api.set_doctype_access, self.DOCTYPE, {"All": {"read": 1}})
+
+	def test_returns_user_roles(self):
+		out = api.get_doctype_access(self.DOCTYPE)
+		self.assertIn("System Manager", out["user_roles"])
+		self.assertNotIn("All", out["user_roles"])

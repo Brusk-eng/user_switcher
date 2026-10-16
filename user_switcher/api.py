@@ -411,3 +411,176 @@ def set_user_roles(user: str, roles: list | str | None = None):
 	doc.save()
 
 	return {"name": doc.name, "user_type": doc.user_type, "roles": sorted(wanted)}
+
+
+# ---------- doctype access (role permissions) ----------
+
+# Level-0 rights offered in the switcher, in display order. Field-level (permlevel > 0) and
+# "only if creator" rules stay in Role Permission Manager.
+ACCESS_RIGHTS = (
+	"select", "read", "write", "create", "delete", "submit", "cancel", "amend",
+	"print", "email", "report", "import", "export", "share",
+)
+# Frappe refuses a rule with none of these set ("No basic permissions set")
+BASIC_RIGHTS = ("select", "read", "write", "create", "submit", "cancel")
+# Same list Role Permission Manager hides
+BLOCKED_DOCTYPES = ("DocType", "Patch Log", "Module Def")
+
+
+def _check_access_doctype(doctype: str):
+	"""Raise unless the caller may change `doctype`'s role permissions; returns its meta."""
+	if not _can_switch():
+		_deny(_("Not permitted to manage doctype access"), "manage_access", doctype)
+	if not doctype or not frappe.db.exists("DocType", doctype):
+		frappe.throw(_("DocType {0} not found").format(doctype or ""))
+	meta = frappe.get_meta(doctype)
+	if meta.istable or doctype in BLOCKED_DOCTYPES:
+		frappe.throw(_("Permissions of {0} can't be changed here").format(doctype))
+	return meta
+
+
+def _access_rights(meta) -> list[str]:
+	"""Rights that make sense for this doctype; Frappe rejects the others on save."""
+	skip = set()
+	if not meta.is_submittable:
+		skip |= {"submit", "cancel", "amend"}
+	if not meta.allow_import:
+		skip.add("import")
+	if meta.issingle:
+		skip |= {"create", "delete", "report", "import", "export"}
+	return [r for r in ACCESS_RIGHTS if r not in skip]
+
+
+def _level_zero_rules(doctype: str) -> list[dict]:
+	"""The doctype's effective level-0 rules: Custom DocPerm once customised, else the standard DocPerm."""
+	fields = ["role", "if_owner", *ACCESS_RIGHTS]
+	filters = {"parent": doctype, "permlevel": 0}
+	return frappe.get_all("Custom DocPerm", filters=filters, fields=fields, ignore_permissions=True) or frappe.get_all(
+		"DocPerm", filters=filters, fields=fields, ignore_permissions=True
+	)
+
+
+@frappe.whitelist()
+def search_doctypes(txt: str | None = None) -> list[str]:
+	"""DocTypes whose access can be managed, matching `txt`."""
+	if not _can_switch():
+		_deny(_("Not permitted"), "search_doctypes")
+	filters = [["istable", "=", 0], ["name", "not in", BLOCKED_DOCTYPES]]
+	if txt:
+		filters.append(["name", "like", f"%{_escape_like(txt)}%"])
+	return frappe.get_all("DocType", filters=filters, pluck="name", order_by="name asc", limit=20, ignore_permissions=True)
+
+
+@frappe.whitelist()
+def get_doctype_access(doctype: str) -> dict:
+	"""Who can do what on `doctype`, and which of those roles the signed-in user has.
+
+	Returns:
+		Dict with `doctype`, `rights` (applicable rights in display order), `roles` (one row per
+		role with a level-0 rule: `role`, `perms`, `user_has`, `locked`), `user`, `user_roles`,
+		`only_if_creator` (roles whose rule applies only to their own documents), `customized`
+		and `assignable_roles` (roles that can be given access).
+	"""
+	meta = _check_access_doctype(doctype)
+	rights = _access_rights(meta)
+	user = frappe.session.user
+	user_roles = set(frappe.get_roles(user))
+
+	rows = {}
+	only_if_creator = set()
+	for rule in _level_zero_rules(doctype):
+		if rule.if_owner:
+			only_if_creator.add(rule.role)
+			continue
+		rows[rule.role] = {r: frappe.utils.cint(rule.get(r)) for r in rights}
+
+	roles = [
+		{
+			"role": role,
+			"perms": perms,
+			"user_has": role in user_roles,
+			# Rules for automatic roles reach every user (or every website visitor), so leave them to Role Permission Manager
+			"locked": role in AUTOMATIC_ROLES,
+		}
+		for role, perms in rows.items()
+	]
+	roles.sort(key=lambda r: (not r["user_has"], r["locked"], r["role"].casefold()))
+
+	return {
+		"doctype": doctype,
+		"rights": rights,
+		"roles": roles,
+		"user": user,
+		"user_roles": sorted(user_roles - set(AUTOMATIC_ROLES)),
+		"only_if_creator": sorted(only_if_creator),
+		"customized": bool(frappe.db.exists("Custom DocPerm", {"parent": doctype})),
+		"assignable_roles": frappe.get_all(
+			"Role",
+			filters={"disabled": 0, "name": ["not in", AUTOMATIC_ROLES]},
+			pluck="name",
+			order_by="name asc",
+			ignore_permissions=True,
+		),
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def set_doctype_access(doctype: str, changes: dict | str):
+	"""Apply level-0 permission changes to `doctype`, the way Role Permission Manager saves them.
+
+	Args:
+		doctype: The DocType to change.
+		changes: `{role: {right: 0 | 1}}` (or its JSON). Only the rights listed are touched. A role
+			left with no basic right (read, write, create, ...) loses its rule.
+
+	Returns:
+		The updated access, as `get_doctype_access` returns it.
+
+	Raises:
+		frappe.PermissionError: Caller may not switch users.
+		frappe.ValidationError: Unknown or automatic role, or a combination Frappe rejects (e.g. Cancel without Submit).
+	"""
+	from frappe.core.doctype.doctype.doctype import validate_permissions_for_doctype
+	from frappe.permissions import setup_custom_perms
+
+	meta = _check_access_doctype(doctype)
+	rights = set(_access_rights(meta))
+	changes = frappe.parse_json(changes) if isinstance(changes, str) else (changes or {})
+	assignable = set(frappe.get_all("Role", filters={"disabled": 0}, pluck="name", ignore_permissions=True)) - set(
+		AUTOMATIC_ROLES
+	)
+
+	setup_custom_perms(doctype)
+	for role, values in changes.items():
+		if role not in assignable:
+			frappe.throw(_("Role {0} can't be given access here").format(role))
+		values = {r: frappe.utils.cint(v) for r, v in (values or {}).items() if r in rights}
+		if not values:
+			continue
+
+		name = frappe.db.get_value("Custom DocPerm", {"parent": doctype, "role": role, "permlevel": 0, "if_owner": 0})
+		if name:
+			rule = frappe.get_doc("Custom DocPerm", name)
+		else:
+			rule = frappe.new_doc("Custom DocPerm")
+			rule.update({"parent": doctype, "parenttype": "DocType", "parentfield": "permissions", "role": role, "permlevel": 0})
+			# The doctype defaults turn on read and export; start from nothing instead
+			rule.update({r: 0 for r in ACCESS_RIGHTS})
+		rule.update(values)
+
+		if not any(rule.get(r) for r in BASIC_RIGHTS):
+			if not rule.is_new():
+				frappe.delete_doc("Custom DocPerm", rule.name, ignore_permissions=True, force=True)
+			continue
+		rule.save(ignore_permissions=True)
+
+		frappe.logger("user_switcher").info(
+			"doctype access: real_user=%s doctype=%s role=%s set=%s", _real_user(), doctype, role, values
+		)
+
+	if not frappe.db.exists("Custom DocPerm", {"parent": doctype}):
+		# With no custom rules left Frappe would silently fall back to the standard ones
+		frappe.throw(_("{0} must keep at least one permission rule").format(doctype))
+
+	validate_permissions_for_doctype(doctype)
+	return get_doctype_access(doctype)
