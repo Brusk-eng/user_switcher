@@ -53,6 +53,8 @@ User Switcher is a Frappe and ERPNext app for developers, implementers, and QA t
 | **Keyboard first** | Press `Ctrl+Shift+S` to open the switcher. Press `1` to `9` to switch. Press `Ctrl+Shift+A` to go back from any page. |
 | **"Viewing as" banner** | While you are switched, a thin amber frame and a "Viewing as … · Back" pill show on every page. They never block clicks. |
 | **Manage roles** | Give or remove roles for the user you are viewing as. The roles that user already has show first, ticked. |
+| **Doctype access** | Choose which roles can select, read, write, create, delete, submit, cancel, or amend a doctype. The roles of the user you are viewing as show first. |
+| **Fix access** | While you are switched, a "Not permitted" error shows a **Fix access** link. It opens Doctype access for that doctype. |
 | **Create test users** | Make a user with the roles you choose. Switch into that user right away. The app sends no welcome email. |
 | **Search and filters** | Search by name or email. Filter by System users or Website users. |
 | **How-to guide** | Click the **ⓘ** button next to **Hide**. A short guide in plain language explains every feature. |
@@ -142,6 +144,27 @@ These rules apply:
 
 Roles are saved on the User. The change shows in the Version history of that user.
 
+### Giving a role access to a doctype
+
+1. Open the switcher on the page of a doctype, for example a Sales Invoice.
+2. Click **Doctype access** at the top. The doctype of the page fills in. Type another name to change it.
+3. Read the box at the top. It shows what the user you are viewing as can do (**Allowed**) and what is **Missing**.
+4. Click a right, for example **Create**, on one of that user's roles. The roles of that user show first, even roles with no access yet.
+5. To give access to another role, type its name in **Search roles or add one** and click it under **Add a role**.
+6. Click **Save & reload**. A blue ring marks each change that is not saved yet.
+
+Some rights need others. The screen turns them on for you. For example, **Submit** also turns on **Write** and **Read**, and **Cancel** also turns on **Submit**. Turning a right off also turns off the rights that need it. Tick **All rights** to see Print, Email, Report, Import, Export, and Share.
+
+If a page says **Not permitted** while you are switched, click **Fix access** in the message. It opens the same screen for that doctype.
+
+These rules apply:
+
+- A change applies to **every** user with that role, not only the user you are viewing as.
+- The app saves the rules in **Custom DocPerm**, the same place as Role Permission Manager. After the first change to a doctype, app updates no longer change its standard rules. Reset the doctype in Role Permission Manager to get them back.
+- The rules for All, Guest, and Desk User show under **Everyone**, but you cannot change them here, because they apply to every user.
+- Field-level rules and "only if creator" rules are not on this screen. Use the link at the bottom to open Role Permission Manager.
+- The doctypes DocType, Patch Log, Module Def, and child tables are not offered.
+
 ### How-to guide
 
 Click the **ⓘ** button next to **Hide** at the bottom of the switcher. The guide opens inside the switcher. Click the back arrow, click **ⓘ** again, or press `Esc` to return to the list.
@@ -188,7 +211,7 @@ To turn the app off, remove either setting. The button disappears and the API re
 
 **Who can switch:** Administrator, and any enabled user with the **System Manager** role. A System Manager cannot switch into Administrator. A System Manager also cannot switch into another System Manager, unless the first user created the second user and the second user has no password. To change the allowed roles, edit `ALLOWED_ROLES` in `user_switcher/api.py`.
 
-**Logs:** the app writes refused requests and ended sessions to `logs/user_switcher.log` in the bench folder. It writes the same lines to `sites/$SITE/logs/user_switcher.log`.
+**Logs:** the app writes refused requests, ended sessions, and doctype access changes to `logs/user_switcher.log` in the bench folder. It writes the same lines to `sites/$SITE/logs/user_switcher.log`.
 
 ---
 
@@ -211,6 +234,7 @@ User Switcher lets a System Manager act as other users. The app limits this powe
 | Refusals are logged | The app writes refused switch, role, and test-user requests to `logs/user_switcher.log`, with the user, the target, and the IP address. |
 | Safe output | The app escapes names, emails, and image URLs as HTML wherever it shows them. |
 | Test-user safety | The app checks role names against the Role list. It never assigns `Administrator`, `All`, `Guest`, or `Desk User`. |
+| Doctype access limits | Only a user who can switch can change doctype rules. The rules for `All`, `Guest`, `Administrator`, and `Desk User` cannot be changed. The app writes each change to `logs/user_switcher.log`. |
 | Role management limits | Only a user who can switch can change roles. Administrator and Guest cannot be edited. Other System Managers are off limits, as they are for switching. A user cannot remove System Manager from their own account. |
 
 ---

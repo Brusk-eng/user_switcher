@@ -29,6 +29,7 @@
 		chevron_left: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>`,
 		shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>`,
 		info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5h.01"/></svg>`,
+		key: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 9.2-9.2"/><path d="m17 6 3 3"/><path d="m14 9 2 2"/></svg>`,
 		eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`,
 	};
 
@@ -296,6 +297,7 @@
 			${item("back", t("Come back to your own account"), t("Press {0}, click “Back to …” at the top, or press {1} on any page.", [kbd(0), kbd(BACK_SHORTCUT_LABEL)]))}
 			${item("star", t("Pinned users"), t("Click the star on a user to pin them at the top. Pinned users keep their numbers, even after you switch. Drag a pinned user up or down to change the order. Users you switch to often also show under Most used."))}
 			${item("shield", t("Manage roles"), t("Click Manage roles at the top to give or remove roles (access) for the user you are viewing as. Tick the roles, then press Save roles."))}
+			${item("key", t("Doctype access"), t("Click Doctype access at the top to choose which roles can read, write, create or submit a doctype. The roles of the user you are viewing as come first, so one click gives them what they are missing. When a page says Not permitted while you are switched, use Fix access in the message."))}
 			${item("plus", t("Create a test user"), t("Click + Test user, type a name, tick the roles and create. You can switch into the new user right away."))}
 			${item("eye", t("Hide the button"), t("Click Hide to remove the button until your next login. Press {0} to bring it back.", [kbd(SHORTCUT_LABEL)]))}
 			<div class="us-info-keys">
@@ -371,6 +373,37 @@
 						${info_html()}
 					</div>
 
+					<div class="us-access">
+						<div class="us-create-head">
+							<button type="button" class="us-icon-btn us-access-back" aria-label="${t("Back")}">${ICONS.chevron_left}</button>
+							<span class="us-create-titles">
+								<span class="us-create-title">${t("Doctype access")}</span>
+								<span class="us-access-sub">${t("Choose which roles can open and change a doctype")}</span>
+							</span>
+						</div>
+						<label class="us-field">
+							<span>${t("DocType")}</span>
+							<input class="us-access-doctype" type="text" list="us-access-doctypes" placeholder="${t("e.g. Sales Invoice")}" autocomplete="off" spellcheck="false">
+							<datalist id="us-access-doctypes"></datalist>
+						</label>
+						<div class="us-access-summary"></div>
+						<div class="us-access-tools">
+							<span class="us-access-search">
+								${ICONS.search}
+								<input class="us-access-role-search" type="text" placeholder="${t("Search roles or add one")}" autocomplete="off" spellcheck="false">
+							</span>
+							<label class="us-access-more"><input type="checkbox"> ${t("All rights")}</label>
+						</div>
+						<div class="us-access-suggest"></div>
+						<div class="us-access-roles"></div>
+						<a class="us-access-advanced" href="/app/permission-manager">${t("Field-level and “only if creator” rules: open Role Permission Manager")}</a>
+						<div class="us-create-actions us-access-actions">
+							<span class="us-access-changes"></span>
+							<button type="button" class="us-btn us-access-cancel">${t("Cancel")}</button>
+							<button type="button" class="us-btn us-btn--primary us-access-save" disabled>${t("Save")}</button>
+						</div>
+					</div>
+
 					<div class="us-footer">
 						<span class="us-hints">
 							<span><kbd>1</kbd>–<kbd>9</kbd> ${t("switch")}</span>
@@ -397,7 +430,7 @@
 		const $identity = $root.find(".us-identity");
 		const $search = $root.find(".us-search input");
 		const $create = $root.find(".us-create");
-		const state = { ctx: null, user_type: "", txt: "", request_id: 0, creating: false, info: false, editing: null, roles: null, picked: new Set() };
+		const state = { ctx: null, user_type: "", txt: "", request_id: 0, creating: false, info: false, editing: null, roles: null, picked: new Set(), access: null };
 		let search_timer;
 
 		if (storage(sessionStorage, HIDDEN_KEY) === "1") $root.addClass("us-hidden");
@@ -415,11 +448,12 @@
 			$card.attr("aria-hidden", "false");
 			$trigger.attr("aria-expanded", "true");
 			fetch_users();
-			if (!state.creating) setTimeout(() => $search.trigger("focus").trigger("select"), 60);
+			if (!state.creating && !state.access) setTimeout(() => $search.trigger("focus").trigger("select"), 60);
 		}
 
 		function show_info(on) {
 			if (on && state.creating) show_create(false);
+			if (on && state.access) show_access(false);
 			state.info = on;
 			$root.toggleClass("us-info-mode", on);
 			$root.find(".us-info-btn").toggleClass("is-on", on).attr("aria-pressed", on);
@@ -453,6 +487,8 @@
 		});
 
 		$(document).on("click.user_switcher", (e) => {
+			// A click that re-rendered its own target (e.g. a right button) leaves it detached; that was inside
+			if (!e.target.isConnected) return;
 			if (is_open() && !$(e.target).closest("#us-floating-container").length) close();
 		});
 
@@ -467,6 +503,7 @@
 
 			if (e.key === "Escape") {
 				if (state.info) show_info(false);
+				else if (state.access) show_access(false);
 				else if (state.creating) show_create(false);
 				else {
 					close();
@@ -474,7 +511,7 @@
 				}
 				return;
 			}
-			if (state.creating || state.info) return; // let the form have every other key
+			if (state.creating || state.info || state.access) return; // let the form have every other key
 
 			// 1-9 switch to the numbered user, 0 goes back. Only while the search box is
 			// empty, so digits can still be typed to search once a query is started.
@@ -646,19 +683,29 @@
 					</div>
 					<button class="us-icon-btn us-close" aria-label="${t("Close")}">${ICONS.close}</button>
 				</div>
-				${
-					// Administrator's roles can't be edited (the server refuses), so don't offer it
-					me.name === "Administrator"
-						? ""
-						: `<button class="us-edit-roles" title="${t("Give or remove roles (access) for this user")}">
-							${ICONS.shield}
-							<span class="us-edit-roles-text">
-								<b>${t("Manage roles")}</b>
-								<small>${t("Give or remove access for {0}", [esc(display_name(me))])}</small>
-							</span>
-							${ICONS.chevron_right}
-						</button>`
-				}
+				<div class="us-actions">
+					${
+						// Administrator's roles can't be edited (the server refuses), so don't offer it
+						me.name === "Administrator"
+							? ""
+							: `<button class="us-edit-roles" title="${t("Give or remove roles (access) for {0}", [esc(display_name(me))])}">
+								${ICONS.shield}
+								<span class="us-edit-roles-text">
+									<b>${t("Manage roles")}</b>
+									<small>${t("Roles of {0}", [esc(display_name(me))])}</small>
+								</span>
+								${ICONS.chevron_right}
+							</button>`
+					}
+					<button class="us-edit-roles us-edit-access" title="${t("Choose which roles can read, write or create a doctype")}">
+						${ICONS.key}
+						<span class="us-edit-roles-text">
+							<b>${t("Doctype access")}</b>
+							<small>${route_doctype() ? esc(route_doctype()) : t("Role permissions")}</small>
+						</span>
+						${ICONS.chevron_right}
+					</button>
+				</div>
 				${
 					ctx.is_switched
 						? `<button class="us-switch-back">
@@ -670,7 +717,8 @@
 				}
 			`);
 			$identity.find(".us-close").on("click", close);
-			$identity.find(".us-edit-roles").on("click", () => show_roles(me));
+			$identity.find(".us-edit-roles:not(.us-edit-access)").on("click", () => show_roles(me));
+			$identity.find(".us-edit-access").on("click", () => show_access(true, route_doctype()));
 			$identity.find(".us-switch-back").on("click", switch_back);
 		}
 
@@ -816,6 +864,7 @@
 		$create.find(".us-create-cancel").on("click", () => show_create(false));
 
 		function show_create(on) {
+			if (on && state.access) show_access(false);
 			state.creating = on;
 			state.editing = null;
 			if (on && state.info) show_info(false);
@@ -975,7 +1024,305 @@
 				});
 		}
 
-		return { open };
+		// ---------- doctype access (role permissions) ----------
+
+		const COMMON_RIGHTS = ["select", "read", "write", "create", "delete", "submit", "cancel", "amend"];
+		const RIGHT_LABELS = {
+			select: t("Select"), read: t("Read"), write: t("Write"), create: t("Create"), delete: t("Delete"),
+			submit: t("Submit"), cancel: t("Cancel"), amend: t("Amend"), print: t("Print"), email: t("Email"),
+			report: t("Report"), import: t("Import"), export: t("Export"), share: t("Share"),
+		};
+		// Turning a right on also turns on what Frappe requires for it; turning one off drops what needs it
+		const NEEDS = { submit: ["write"], cancel: ["submit"], amend: ["cancel"], import: ["create"] };
+		const $access = $root.find(".us-access");
+		const $dt_input = $access.find(".us-access-doctype");
+		const $dt_list = $access.find("datalist");
+		const $access_roles = $access.find(".us-access-roles");
+		const $role_find = $access.find(".us-access-role-search");
+		const $suggest = $access.find(".us-access-suggest");
+		const $access_more = $access.find(".us-access-more input");
+		let dt_timer;
+
+		function show_access(on, doctype) {
+			if (on && state.info) show_info(false);
+			if (on && state.creating) show_create(false);
+			state.access = on ? { data: null, extra: [], edits: {} } : null;
+			$root.toggleClass("us-access-mode", on);
+			if (!on) {
+				$search.trigger("focus");
+				return;
+			}
+			$dt_input.val(doctype || "");
+			$role_find.val("");
+			if (doctype) load_access(doctype);
+			else paint_access();
+			setTimeout(() => $dt_input.trigger("focus"), 30);
+		}
+
+		$access.find(".us-access-back, .us-access-cancel").on("click", () => show_access(false));
+
+		$dt_input.on("input", () => {
+			clearTimeout(dt_timer);
+			dt_timer = setTimeout(() => {
+				frappe.call({ method: `${API}.search_doctypes`, args: { txt: $dt_input.val().trim() }, type: "GET" }).then((r) => {
+					$dt_list.html((r.message || []).map((d) => `<option value="${esc(d)}"></option>`).join(""));
+					// Picking a suggestion fires input, not change, in some browsers
+					if ((r.message || []).includes($dt_input.val())) load_access($dt_input.val());
+				});
+			}, 200);
+		});
+		$dt_input.on("change", () => $dt_input.val().trim() && load_access($dt_input.val().trim()));
+		$dt_input.on("keydown", (e) => {
+			if (e.key === "Enter") {
+				e.preventDefault();
+				$dt_input.trigger("change");
+			}
+		});
+
+		function load_access(doctype) {
+			if (!state.access || state.access.data?.doctype === doctype) return;
+			if (has_access_edits()) {
+				frappe.show_alert?.({ message: t("Save or cancel your changes first"), indicator: "orange" });
+				$dt_input.val(state.access.data.doctype);
+				return;
+			}
+			$access_roles.html(empty_state(t("Loading...")));
+			frappe
+				.call({ method: `${API}.get_doctype_access`, args: { doctype }, type: "GET" })
+				.then((r) => {
+					if (!state.access) return;
+					state.access = { data: r.message, extra: [], edits: {} };
+					$role_find.val("");
+					$access.find(".us-access-advanced").attr("href", `/app/permission-manager/${encodeURIComponent(doctype)}`);
+					paint_access();
+				})
+				.catch(() => {
+					if (!state.access) return;
+					state.access.data = null;
+					paint_access();
+				});
+		}
+
+		const has_access_edits = () => Object.values(state.access?.edits || {}).some((e) => Object.keys(e).length);
+
+		function access_value(row, right) {
+			const edit = state.access.edits[row.role]?.[right];
+			return edit ?? (row.perms[right] || 0);
+		}
+
+		function access_rows() {
+			const data = state.access.data;
+			const known = new Set(data.roles.map((r) => r.role));
+			// The viewed user's roles always get a row, even with no rule yet, so the fix is one click away
+			const mine = data.user_roles.filter((r) => !known.has(r)).map((role) => ({ role, perms: {}, user_has: true }));
+			const extra = state.access.extra.filter((r) => !known.has(r) && !data.user_roles.includes(r)).map((role) => ({ role, perms: {} }));
+			const rows = [...data.roles, ...mine, ...extra];
+			return rows.sort((a, b) => !!b.user_has - !!a.user_has || !!a.locked - !!b.locked);
+		}
+
+		function set_right(row, right, on) {
+			const rights = state.access.data.rights;
+			const values = {};
+			const apply = (r, v) => rights.includes(r) && (values[r] = v);
+			apply(right, on ? 1 : 0);
+			if (on) {
+				// Anything but Select needs Read to be useful
+				if (right !== "select") apply("read", 1);
+				for (let r = right; NEEDS[r]; ) NEEDS[r].forEach((n) => apply((r = n), 1));
+				if (["submit", "cancel", "amend"].includes(right)) apply("write", 1);
+			} else {
+				const drop = (r) => Object.entries(NEEDS).forEach(([k, v]) => v.includes(r) && (apply(k, 0), drop(k)));
+				drop(right);
+				if (right === "write") ["submit", "cancel", "amend"].forEach((r) => apply(r, 0));
+				if (right === "read") rights.filter((r) => r !== "select").forEach((r) => apply(r, 0));
+			}
+			const edits = (state.access.edits[row.role] ||= {});
+			Object.entries(values).forEach(([r, v]) => (v === (row.perms[r] || 0) ? delete edits[r] : (edits[r] = v)));
+			paint_access();
+		}
+
+		function paint_access() {
+			const data = state.access?.data;
+			const $summary = $access.find(".us-access-summary").empty();
+			$access.find(".us-access-tools, .us-access-advanced, .us-access-actions").toggle(!!data);
+			if (!data) {
+				$access_roles.html(empty_state(t("Type a doctype name above, for example Sales Invoice.")));
+				return;
+			}
+			const show_all = $access_more.prop("checked");
+			const shown_rights = data.rights.filter((r) => show_all || COMMON_RIGHTS.includes(r));
+			const all_rows = access_rows();
+			const q = $role_find.val().trim().toLowerCase();
+			const rows = all_rows.filter((r) => !q || r.role.toLowerCase().includes(q));
+			const me = state.ctx?.current_user || boot_user_info(data.user);
+
+			// What the viewed user ends up with, from every role they have (including automatic ones)
+			const mine = all_rows.filter((r) => r.user_has);
+			const can = shown_rights.filter((right) => mine.some((row) => access_value(row, right)));
+			const cannot = shown_rights.filter((right) => !can.includes(right));
+			const pills = (rights, cls) => rights.map((r) => `<span class="us-access-pill ${cls}">${RIGHT_LABELS[r]}</span>`).join("");
+			$summary.html(`
+				<div class="us-access-summary-title">${t("What {0} can do", [`<b>${esc(display_name(me))}</b>`])}</div>
+				<div class="us-access-summary-row">
+					<span class="us-access-summary-label">${t("Allowed")}</span>
+					<span class="us-access-pills">${can.length ? pills(can, "is-yes") : `<span class="us-access-none">${t("Nothing yet")}</span>`}</span>
+				</div>
+				${cannot.length ? `<div class="us-access-summary-row">
+					<span class="us-access-summary-label">${t("Missing")}</span>
+					<span class="us-access-pills">${pills(cannot, "is-no")}</span>
+				</div>` : ""}
+				${data.only_if_creator.length ? `<small>${t("Rules limited to the creator's own documents are not shown: {0}", [esc(data.only_if_creator.join(", "))])}</small>` : ""}
+			`);
+
+			const role_html = (row) => {
+				const buttons = shown_rights
+					.map((right) => {
+						const on = access_value(row, right);
+						const changed = state.access.edits[row.role]?.[right] !== undefined;
+						return `<button type="button" class="us-right ${on ? "is-on" : ""} ${changed ? "is-changed" : ""}"
+							data-right="${right}" aria-pressed="${!!on}" ${row.locked ? "disabled" : ""}>${RIGHT_LABELS[right]}</button>`;
+					})
+					.join("");
+				return `<div class="us-access-role ${row.user_has ? "is-mine" : ""}" data-role="${esc(row.role)}">
+					<b class="us-access-role-name" title="${esc(row.role)}">${esc(row.role)}</b>
+					<div class="us-access-rights">${buttons}</div>
+				</div>`;
+			};
+			// Grouped so the viewed user's roles (the ones that fix their access) are clearly first
+			const groups = [
+				[t("{0}'s roles", [esc(display_name(me))]), rows.filter((r) => r.user_has && !r.locked)],
+				[t("Other roles with access"), rows.filter((r) => !r.user_has && !r.locked)],
+				[t("Everyone (change in Role Permission Manager)"), rows.filter((r) => r.locked)],
+			];
+			$access_roles.html(
+				groups
+					.filter(([, list]) => list.length)
+					.map(([title, list]) => `<div class="us-group">${title}</div>` + list.map(role_html).join(""))
+					.join("") || (q ? "" : empty_state(t("No role has access yet. Search above to add one.")))
+			);
+			$access_roles.find(".us-right").on("click", function () {
+				const role = $(this).closest(".us-access-role").data("role");
+				const row = rows.find((r) => r.role === String(role));
+				set_right(row, this.dataset.right, this.getAttribute("aria-pressed") !== "true");
+			});
+
+			// Roles without a rule yet that match the search: one click adds them as a row
+			const listed = new Set(all_rows.map((r) => r.role));
+			const addable = q ? data.assignable_roles.filter((r) => !listed.has(r) && r.toLowerCase().includes(q)).slice(0, 8) : [];
+			$suggest.html(
+				addable.length
+					? `<span class="us-group">${t("Add a role")}</span>` +
+							addable.map((r) => `<button type="button" class="us-access-suggest-item" data-role="${esc(r)}">${ICONS.plus}${esc(r)}</button>`).join("")
+					: q && !rows.length
+						? empty_state(t("No roles match “{0}”", [esc(q)]))
+						: ""
+			);
+
+			const count = Object.values(state.access.edits).reduce((n, e) => n + Object.keys(e).length, 0);
+			$access.find(".us-access-changes").text(count ? t("{0} unsaved", [count]) : "");
+			$access.find(".us-access-save").prop("disabled", !count).text(count ? t("Save & reload") : t("Save"));
+		}
+
+		function add_access_role(role) {
+			if (!role) return;
+			state.access.extra.push(role);
+			$role_find.val("");
+			paint_access();
+			const $row = $access_roles.find(`.us-access-role[data-role="${CSS.escape(role)}"]`);
+			$row.addClass("is-new")[0]?.scrollIntoView({ block: "nearest" });
+			$row.find(".us-right").first().trigger("focus");
+		}
+
+		$suggest.on("click", ".us-access-suggest-item", function () {
+			add_access_role(String($(this).data("role")));
+		});
+		$role_find.on("input", paint_access);
+		$role_find.on("keydown", (e) => {
+			if (e.key !== "Enter") return;
+			e.preventDefault();
+			// Enter adds the first suggestion, or jumps to the only matching row
+			const first = $suggest.find(".us-access-suggest-item").first().data("role");
+			if (first) add_access_role(String(first));
+			else $access_roles.find(".us-right").first().trigger("focus");
+		});
+		$access_more.on("change", paint_access);
+
+		$access.find(".us-access-save").on("click", () => {
+			const $buttons = $access.find(".us-btn").prop("disabled", true);
+			frappe
+				.call({
+					method: `${API}.set_doctype_access`,
+					args: { doctype: state.access.data.doctype, changes: state.access.edits },
+					type: "POST",
+				})
+				.then(() => {
+					frappe.show_alert?.({ message: t("Access to {0} updated", [esc(state.access.data.doctype)]), indicator: "green" });
+					// Desk caches permissions in boot info, so reload to apply them
+					window.location.reload();
+				})
+				.catch(() => $buttons.prop("disabled", false));
+		});
+
+		return {
+			open,
+			open_access(doctype) {
+				open();
+				show_access(true, doctype);
+			},
+		};
+	}
+
+	// ---------- doctype from the current desk route ----------
+
+	const DOCTYPE_VIEWS = ["List", "Form", "Report", "Tree", "Image", "Kanban", "Calendar", "Gantt", "Dashboard", "Map"];
+
+	function route_doctype() {
+		const route = frappe.get_route?.() || [];
+		return DOCTYPE_VIEWS.includes(route[0]) && route[1] ? route[1] : "";
+	}
+
+	// ---------- "Not permitted" while switched: offer to fix it ----------
+
+	function watch_permission_errors() {
+		let last_shown = 0;
+		const offer_fix = (doctype) => {
+			doctype = doctype || route_doctype();
+			if (!doctype || Date.now() - last_shown < 3000) return;
+			last_shown = Date.now();
+			const me = boot_user_info(current_user());
+			frappe.show_alert?.(
+				{
+					message: `${t("{0} has no access to {1}.", [esc(display_name(me)), `<b>${esc(doctype)}</b>`])}
+						<a href="#" class="us-fix-access" data-doctype="${esc(doctype)}">${t("Fix access")}</a>`,
+					indicator: "orange",
+				},
+				10
+			);
+		};
+
+		$(document).on("click", ".us-fix-access", function (e) {
+			e.preventDefault();
+			frappe.user_switcher.open_access?.(this.dataset.doctype);
+		});
+
+		$(document).ajaxComplete((e, xhr, settings) => {
+			if (xhr.responseJSON?.exc_type !== "PermissionError" || String(settings.url).includes("user_switcher.api")) return;
+			let data = settings.data;
+			try {
+				data = typeof data === "string" ? Object.fromEntries(new URLSearchParams(data)) : data;
+			} catch (err) {}
+			offer_fix(data?.doctype);
+		});
+
+		// Desk shows its own Not Permitted page without a server error when the doctype isn't readable
+		const show_not_permitted = frappe.show_not_permitted;
+		if (show_not_permitted) {
+			frappe.show_not_permitted = function () {
+				const out = show_not_permitted.apply(this, arguments);
+				offer_fix();
+				return out;
+			};
+		}
 	}
 
 	// ---------- Ctrl+Shift+A: back to the real account ----------
@@ -1015,6 +1362,8 @@
 			if (!allowed) return;
 			const widget = render_widget();
 			frappe.user_switcher.open = widget.open;
+			frappe.user_switcher.open_access = widget.open_access;
+			if (who.is_switched) watch_permission_errors();
 		});
 	});
 })();

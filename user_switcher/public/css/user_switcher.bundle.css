@@ -683,6 +683,7 @@
 
 #us-floating-container.us-info-mode .us-browse,
 #us-floating-container.us-info-mode .us-hints,
+#us-floating-container.us-info-mode .us-actions,
 #us-floating-container.us-info-mode .us-edit-roles,
 #us-floating-container.us-info-mode .us-switch-back {
 	display: none;
@@ -937,8 +938,59 @@
 }
 
 #us-floating-container.us-creating .us-browse,
-#us-floating-container.us-creating .us-hints {
+#us-floating-container.us-creating .us-hints,
+#us-floating-container.us-creating .us-actions,
+#us-floating-container.us-creating .us-switch-back,
+#us-floating-container.us-creating .us-footer {
 	display: none;
+}
+
+#us-floating-container.us-creating .us-card {
+	width: 520px;
+	max-width: calc(100vw - 24px);
+}
+
+#us-floating-container.us-creating .us-create {
+	gap: 12px;
+	padding: 14px 16px 16px;
+}
+
+#us-floating-container.us-creating .us-create-title {
+	font-size: 15px;
+}
+
+#us-floating-container.us-creating .us-field {
+	font-size: 12px;
+}
+
+#us-floating-container.us-creating .us-field input[type="text"],
+#us-floating-container.us-creating .us-field input[type="email"] {
+	height: 36px;
+}
+
+#us-floating-container.us-creating .us-role-list {
+	min-height: 200px;
+	max-height: min(360px, 40vh);
+}
+
+#us-floating-container.us-creating .us-role {
+	padding: 6px 8px;
+	font-size: 13px;
+}
+
+#us-floating-container.us-creating .us-create-actions {
+	position: sticky;
+	bottom: -16px;
+	margin: auto -16px -16px;
+	padding: 12px 16px;
+	background: var(--us-bg);
+	border-top: 1px solid var(--us-border);
+}
+
+#us-floating-container.us-creating .us-btn {
+	height: 34px;
+	padding: 0 16px;
+	font-size: 13px;
 }
 
 #us-floating-container.us-creating .us-create {
@@ -1089,9 +1141,16 @@
 	pointer-events: none;
 }
 
-/* "Manage roles" entry button in the identity header */
+/* "Manage roles" + "Doctype access" tiles in the identity header, side by side */
+#us-floating-container .us-actions {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+	gap: 8px;
+	margin-top: 12px;
+}
+
 #us-floating-container .us-edit-roles {
-	margin-top: 10px;
+	min-width: 0;
 	width: 100%;
 	display: flex;
 	align-items: center;
@@ -1233,6 +1292,7 @@
 	background: var(--us-hover);
 }
 
+#us-floating-container.us-roles-mode .us-actions,
 #us-floating-container.us-roles-mode .us-edit-roles,
 #us-floating-container.us-roles-mode .us-switch-back,
 #us-floating-container.us-roles-mode .us-footer {
@@ -1253,6 +1313,351 @@
 	height: 34px;
 	padding: 0 16px;
 	font-size: 13px;
+}
+
+/* ---------- Doctype access ---------- */
+
+#us-floating-container .us-access {
+	display: none;
+	flex-direction: column;
+	gap: 12px;
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 14px 16px 16px;
+	scrollbar-width: thin;
+}
+
+#us-floating-container.us-access-mode .us-access {
+	display: flex;
+}
+
+#us-floating-container.us-access-mode .us-browse,
+#us-floating-container.us-access-mode .us-hints,
+#us-floating-container.us-access-mode .us-actions,
+#us-floating-container.us-access-mode .us-edit-roles,
+#us-floating-container.us-access-mode .us-switch-back,
+#us-floating-container.us-access-mode .us-footer {
+	display: none;
+}
+
+#us-floating-container.us-access-mode .us-card {
+	width: 680px;
+	/* Fixed height: searching or switching doctype must not make the popup jump */
+	height: min(760px, calc(100vh - 100px));
+	max-width: calc(100vw - 24px);
+}
+
+#us-floating-container .us-access .us-create-title {
+	font-size: 15px;
+}
+
+#us-floating-container .us-access-sub {
+	font-size: 12px;
+	font-weight: 400;
+	color: var(--us-muted);
+}
+
+#us-floating-container .us-access .us-field {
+	font-size: 12px;
+}
+
+#us-floating-container .us-access-doctype {
+	height: 36px !important;
+}
+
+#us-floating-container .us-access-summary {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 10px 12px;
+	border-radius: 10px;
+	font-size: 12px;
+	background: var(--us-bg-subtle);
+	border: 1px solid var(--us-border);
+}
+
+#us-floating-container .us-access-summary:empty {
+	display: none;
+}
+
+#us-floating-container .us-access-summary-title {
+	color: var(--us-muted);
+}
+
+#us-floating-container .us-access-summary-title b {
+	color: var(--us-text);
+}
+
+#us-floating-container .us-access-summary-row {
+	display: grid;
+	grid-template-columns: 58px minmax(0, 1fr);
+	align-items: start;
+	gap: 8px;
+}
+
+#us-floating-container .us-access-summary-label {
+	padding-top: 3px;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--us-muted);
+}
+
+#us-floating-container .us-access-summary small {
+	color: var(--us-muted);
+}
+
+#us-floating-container .us-access-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+#us-floating-container .us-access-pill {
+	padding: 2px 8px;
+	border-radius: 99px;
+	font-size: 11px;
+	font-weight: 500;
+	border: 1px solid transparent;
+}
+
+#us-floating-container .us-access-pill.is-yes {
+	color: #15803d;
+	background: rgba(21, 128, 61, 0.1);
+}
+
+#us-floating-container .us-access-pill.is-no {
+	color: #b91c1c;
+	border: 1px dashed rgba(185, 28, 28, 0.45);
+}
+
+[data-theme="dark"] #us-floating-container .us-access-pill.is-yes {
+	color: #4ade80;
+	background: rgba(74, 222, 128, 0.12);
+}
+
+[data-theme="dark"] #us-floating-container .us-access-pill.is-no {
+	color: #f87171;
+	border-color: rgba(248, 113, 113, 0.45);
+}
+
+#us-floating-container .us-access-none {
+	color: var(--us-muted);
+	padding-top: 2px;
+}
+
+#us-floating-container .us-access-roles {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+#us-floating-container .us-access-roles .us-group {
+	padding: 10px 2px 2px;
+}
+
+#us-floating-container .us-access-roles .us-group:first-child {
+	padding-top: 0;
+}
+
+#us-floating-container .us-access-role {
+	display: grid;
+	grid-template-columns: 128px minmax(0, 1fr);
+	align-items: center;
+	gap: 6px 10px;
+	padding: 7px 8px 7px 12px;
+	border: 1px solid var(--us-border);
+	border-radius: 8px;
+}
+
+#us-floating-container .us-access-role.is-mine {
+	background: var(--us-bg-subtle);
+}
+
+#us-floating-container .us-access-role-name {
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#us-floating-container .us-access-rights {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+@media (max-width: 640px) {
+	#us-floating-container .us-access-role {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+#us-floating-container .us-right {
+	height: 26px;
+	padding: 0 7px;
+	border-radius: 6px;
+	font-size: 12px;
+	color: var(--us-muted);
+	background: var(--us-bg);
+	border: 1px solid var(--us-border);
+}
+
+#us-floating-container .us-right:hover {
+	border-color: var(--us-muted);
+	color: var(--us-text);
+}
+
+#us-floating-container .us-right.is-on {
+	color: var(--us-accent-fg);
+	background: var(--us-accent);
+	border-color: var(--us-accent);
+}
+
+/* Unsaved: a blue ring, so you can see what Save will change */
+#us-floating-container .us-right.is-changed {
+	box-shadow: 0 0 0 2px #3b82f6;
+}
+
+#us-floating-container .us-right:disabled {
+	cursor: default;
+	opacity: 0.6;
+}
+
+#us-floating-container .us-access-tools {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+#us-floating-container .us-access-search {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	height: 34px;
+	padding: 0 10px;
+	color: var(--us-muted);
+	background: var(--control-bg, var(--us-bg-subtle));
+	border: 1px solid transparent;
+	border-radius: 8px;
+}
+
+#us-floating-container .us-access-search:focus-within {
+	background: var(--us-bg);
+	border-color: var(--us-border);
+	box-shadow: 0 0 0 3px var(--us-hover);
+}
+
+#us-floating-container .us-access-search svg {
+	width: 14px;
+	height: 14px;
+}
+
+#us-floating-container .us-access-role-search {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	padding: 0;
+	font: inherit;
+	font-size: 13px;
+	color: var(--us-text);
+	background: none;
+	border: 0;
+	outline: none;
+	box-shadow: none;
+}
+
+#us-floating-container .us-access-suggest {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+#us-floating-container .us-access-suggest:empty {
+	display: none;
+}
+
+#us-floating-container .us-access-suggest .us-group {
+	flex-basis: 100%;
+	padding: 0 0 2px;
+}
+
+#us-floating-container .us-access-suggest-item {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	height: 26px;
+	padding: 0 9px 0 6px;
+	border-radius: 6px;
+	font-size: 12px;
+	color: var(--us-text);
+	border: 1px dashed var(--us-muted);
+}
+
+#us-floating-container .us-access-suggest-item:hover,
+#us-floating-container .us-access-suggest-item:focus-visible {
+	background: var(--us-hover);
+	border-style: solid;
+}
+
+#us-floating-container .us-access-suggest-item svg {
+	width: 12px;
+	height: 12px;
+}
+
+#us-floating-container .us-access-role.is-new {
+	border-color: #3b82f6;
+}
+
+#us-floating-container .us-access-more {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	margin: 0;
+	font-size: 12px;
+	color: var(--us-muted);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+#us-floating-container .us-access-advanced {
+	font-size: 11px;
+	color: var(--us-muted);
+	text-decoration: underline;
+}
+
+#us-floating-container .us-access-actions {
+	position: sticky;
+	bottom: -16px;
+	align-items: center;
+	/* auto top margin keeps the bar at the bottom when the role list is short */
+	margin: auto -16px -16px;
+	padding: 12px 16px;
+	background: var(--us-bg);
+	border-top: 1px solid var(--us-border);
+}
+
+#us-floating-container .us-access-changes {
+	margin-right: auto;
+	font-size: 12px;
+	color: #2563eb;
+}
+
+#us-floating-container .us-access-actions .us-btn {
+	height: 34px;
+	padding: 0 16px;
+	font-size: 13px;
+}
+
+/* "Fix access" link inside Frappe's alert */
+.us-fix-access {
+	margin-left: 6px;
+	font-weight: 600;
+	text-decoration: underline;
 }
 
 /* ---------- Switched banner (every page) ---------- */
