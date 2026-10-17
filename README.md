@@ -117,9 +117,9 @@ To change the order, drag a pinned user up or down. The other pinned users slide
 
 ### Creating a test user
 
-1. Open the switcher and click **+ Test user**.
+1. Open the switcher and click **New test user**.
 2. Enter a full name. The email fills in as `<name>@example.com`. You can change it.
-3. Tick the roles. The form shows if the result is a **System User** or a **Website User**. Frappe decides this from the roles.
+3. Tick the roles, or click a **Role profile** in the row above them to tick that profile's roles in one go (scroll the row sideways to see more; click it again to clear). The bottom bar shows if the result is a **System User** or a **Website User**. Frappe decides this from the roles.
 4. Click **Create & switch**, or click **Create**.
 
 <p align="center"><img src="docs/screenshots/create-test-user-light.png" alt="The new test user form with a name, an email, and three roles ticked" width="400"></p>
@@ -129,9 +129,9 @@ The app sends no welcome email to a test user. The bio of the user says "Test us
 ### Managing roles
 
 1. Open the switcher.
-2. Click **Manage roles** under the name at the top. This changes the roles of the user you are viewing as, or your own roles if you are not switched.
+2. Click **Manage roles**. This changes the roles of the user you are viewing as, or your own roles if you are not switched.
 3. Read the list. The roles the user already has show first, under **Current roles**, and they are ticked.
-4. Tick the roles to add. Untick the roles to remove.
+4. Tick the roles to add. Untick the roles to remove. Each change is tagged **Adding** or **Removing**, and the bar at the bottom counts them.
 5. Click **Save roles**. The button stays off until you change something.
 6. The page reloads so the new roles apply.
 
@@ -147,7 +147,7 @@ Roles are saved on the User. The change shows in the Version history of that use
 ### Giving a role access to a doctype
 
 1. Open the switcher on the page of a doctype, for example a Sales Invoice.
-2. Click **Doctype access** at the top. The doctype of the page fills in. Type another name to change it.
+2. Click **Doctype access**. The doctype of the page fills in. Type another name to change it.
 3. Read the box at the top. It shows what the user you are viewing as can do (**Allowed**) and what is **Missing**.
 4. Click a right, for example **Create**, on one of that user's roles. The roles of that user show first, even roles with no access yet.
 5. To give access to another role, type its name in **Search roles or add one** and click it under **Add a role**.
@@ -162,7 +162,7 @@ These rules apply:
 - A change applies to **every** user with that role, not only the user you are viewing as.
 - The app saves the rules in **Custom DocPerm**, the same place as Role Permission Manager. After the first change to a doctype, app updates no longer change its standard rules. Reset the doctype in Role Permission Manager to get them back.
 - The rules for All, Guest, and Desk User show under **Everyone**, but you cannot change them here, because they apply to every user.
-- Field-level rules and "only if creator" rules are not on this screen. Use the link at the bottom to open Role Permission Manager.
+- Field-level rules and "only if creator" rules are not on this screen. Click **Role Permission Manager ↗** in the bottom bar to open it for the same doctype. If the user you are viewing as is not a System Manager, the app first switches you back to your own account, because that page is for System Managers only.
 - The doctypes DocType, Patch Log, Module Def, and child tables are not offered.
 
 ### How-to guide
@@ -188,6 +188,7 @@ Every switch creates a record in the **User Switch Log**. A System Manager can o
 | `0` | Switcher open, while switched | Switch back |
 | `↑` `↓` `Enter` | Switcher open | Move through the list and switch |
 | `Esc` | Switcher open | Close the guide, leave a form, or close the switcher |
+| `Backspace` | A screen inside the switcher, not typing in a box | Go back to the user list (same as the ‹ arrow next to the picture) |
 | `Ctrl+Shift+A` / `⌘+Shift+A` | Any page | Switch back to the account you logged in with (usually Administrator) |
 
 The number keys do nothing while the how-to guide or a form is open.

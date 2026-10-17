@@ -16,6 +16,11 @@
 	const BACK_SHORTCUT_LABEL = "Ctrl+Shift+A";
 	const is_back_shortcut = (e) => (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.code === "KeyA";
 
+	// Browsers ignore autocomplete="off" on name/email fields and offer saved addresses. These fields
+	// are for made-up test users, so: no name attribute, no type=email, and a token that turns
+	// Chrome's suggestions off, plus the opt-outs password managers read.
+	const NO_AUTOFILL = 'autocomplete="one-time-code" spellcheck="false" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other"';
+
 	const ICONS = {
 		swap: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></svg>`,
 		search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>`,
@@ -30,6 +35,8 @@
 		shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>`,
 		info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5h.01"/></svg>`,
 		key: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 9.2-9.2"/><path d="m17 6 3 3"/><path d="m14 9 2 2"/></svg>`,
+		lock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
+		user_plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="4"/><path d="M2 21a8 8 0 0 1 16 0M19 8v6M16 11h6"/></svg>`,
 		eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`,
 	};
 
@@ -95,6 +102,56 @@
 
 	function display_name(u) {
 		return u?.full_name || u?.name || "";
+	}
+
+	// Frappe-style search: 0 = no match, lower = better. Typed words may match the starts of words in
+	// any order ("inv sal" → Sales Invoice), the letters may spell the initials ("si" → Sales Invoice),
+	// and a plain "contains" still matches, ranked last.
+	function match_rank(text, query) {
+		const q = (query || "").trim().toLowerCase();
+		if (!q) return 1;
+		const t = (text || "").toLowerCase();
+		const words = t.split(/[\s._\-/]+/).filter(Boolean);
+		const parts = q.split(/\s+/);
+		if (t === q) return 1;
+		if (t.startsWith(q)) return 2;
+		if (parts.length === 1 && q.length > 1 && words.map((w) => w[0]).join("").startsWith(q)) return 3;
+		if (parts.every((p) => words.some((w) => w.startsWith(p)))) return 4;
+		if (t.includes(q)) return 5;
+		return 0;
+	}
+
+	// Filter and order a list by match_rank, keeping the original order among equal matches
+	function search(list, query, text = (x) => x) {
+		if (!(query || "").trim()) return list;
+		return list
+			.map((item, i) => ({ item, i, rank: match_rank(text(item), query) }))
+			.filter((x) => x.rank)
+			.sort((a, b) => a.rank - b.rank || a.i - b.i)
+			.map((x) => x.item);
+	}
+
+	// Bold the typed words where they start a word (or the whole query where it appears)
+	function mark_match(text, query) {
+		const parts = (query || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+		if (!parts.length) return esc(text);
+		const lower = text.toLowerCase();
+		const hits = new Array(text.length).fill(false);
+		for (const p of parts) {
+			let at = -1;
+			for (let i = lower.indexOf(p); i !== -1; i = lower.indexOf(p, i + 1)) {
+				if (i === 0 || /[\s._\-/]/.test(lower[i - 1])) { at = i; break; }
+			}
+			if (at === -1) at = lower.indexOf(p);
+			for (let k = at; at !== -1 && k < at + p.length; k++) hits[k] = true;
+		}
+		let out = "";
+		for (let i = 0; i < text.length; i++) {
+			const open = hits[i] && !hits[i - 1];
+			const shut = hits[i] && !hits[i + 1];
+			out += (open ? "<b>" : "") + esc(text[i]) + (shut ? "</b>" : "");
+		}
+		return out;
 	}
 
 	function slug(s) {
@@ -196,7 +253,7 @@
 
 	// ---------- switching (shared by the widget and the banner) ----------
 
-	function switch_to(user, { back = false } = {}) {
+	function switch_to(user, { back = false, to = null } = {}) {
 		$("#us-floating-container").removeClass("us-open").addClass("us-busy");
 		frappe.dom?.freeze?.(t("Switching to {0}...", [esc(display_name(user))]));
 		return frappe
@@ -213,8 +270,9 @@
 						.filter((k) => k.startsWith(CACHE_KEY) || k.startsWith(BANNER_KEY))
 						.forEach((k) => sessionStorage.removeItem(k));
 				} catch (e) {}
+				if (to) window.location.href = to;
 				// The current desk route may not be accessible to the new user, so restart from /app
-				if (window.location.pathname.startsWith("/app")) window.location.href = "/app";
+				else if (window.location.pathname.startsWith("/app")) window.location.href = "/app";
 				else window.location.reload();
 			})
 			.catch(() => {
@@ -294,11 +352,11 @@
 		return `
 			<p class="us-info-lead">${t("See the app exactly as another user sees it. Pick a user and you are logged in as them. Go back anytime with one click.")}</p>
 			${item("swap", t("Switch to a user"), t("Click a user, or press its number {0} to {1}. Type in the search box to find someone by name or email.", [kbd(1), kbd(9)]))}
-			${item("back", t("Come back to your own account"), t("Press {0}, click “Back to …” at the top, or press {1} on any page.", [kbd(0), kbd(BACK_SHORTCUT_LABEL)]))}
+			${item("back", t("Come back to your own account"), t("Press {0}, click “Back to …” at the top, or press {1} on any page. Inside a screen, the ‹ arrow next to the picture, Esc, or Backspace (when you are not typing) returns to the list.", [kbd(0), kbd(BACK_SHORTCUT_LABEL)]))}
 			${item("star", t("Pinned users"), t("Click the star on a user to pin them at the top. Pinned users keep their numbers, even after you switch. Drag a pinned user up or down to change the order. Users you switch to often also show under Most used."))}
-			${item("shield", t("Manage roles"), t("Click Manage roles at the top to give or remove roles (access) for the user you are viewing as. Tick the roles, then press Save roles."))}
-			${item("key", t("Doctype access"), t("Click Doctype access at the top to choose which roles can read, write, create or submit a doctype. The roles of the user you are viewing as come first, so one click gives them what they are missing. When a page says Not permitted while you are switched, use Fix access in the message."))}
-			${item("plus", t("Create a test user"), t("Click + Test user, type a name, tick the roles and create. You can switch into the new user right away."))}
+			${item("shield", t("Manage roles"), t("Click Manage roles to give or remove roles (access) for the user you are viewing as. Tick the roles, then press Save roles."))}
+			${item("key", t("Doctype access"), t("Click Doctype access to choose which roles can read, write, create or submit a doctype. The roles of the user you are viewing as come first, so one click gives them what they are missing. When a page says Not permitted while you are switched, use Fix access in the message."))}
+			${item("plus", t("Create a test user"), t("Click New test user, type a name, then tick the roles or pick a role profile to tick its roles at once. You can switch into the new user right away."))}
 			${item("eye", t("Hide the button"), t("Click Hide to remove the button until your next login. Press {0} to bring it back.", [kbd(SHORTCUT_LABEL)]))}
 			<div class="us-info-keys">
 				<span>${kbd(SHORTCUT_LABEL)} ${t("open or close")}</span>
@@ -318,6 +376,11 @@
 					<div class="us-identity"></div>
 
 					<div class="us-browse">
+						<div class="us-tiles">
+							<button type="button" class="us-tile us-tile-roles">${ICONS.shield}<span>${t("Manage roles")}</span></button>
+							<button type="button" class="us-tile us-tile-access">${ICONS.lock}<span>${t("Doctype access")}</span></button>
+							<button type="button" class="us-tile us-new">${ICONS.user_plus}<span>${t("New test user")}</span></button>
+						</div>
 						<div class="us-search">
 							<span class="us-search-icon">${ICONS.search}</span>
 							<input type="text" placeholder="${t("Search name or email")}" autocomplete="off" spellcheck="false">
@@ -327,37 +390,41 @@
 							<button class="us-filter active" data-type="">${t("All")}</button>
 							<button class="us-filter" data-type="System User">${t("System")}</button>
 							<button class="us-filter" data-type="Website User">${t("Website")}</button>
-							<button class="us-new" title="${t("Create a test user")}">${ICONS.plus}<span>${t("Test user")}</span></button>
 						</div>
 						<div class="us-list" role="listbox"></div>
 					</div>
 
 					<form class="us-create" autocomplete="off" novalidate>
 						<div class="us-create-head">
-							<button type="button" class="us-icon-btn us-create-cancel" aria-label="${t("Back")}">${ICONS.chevron_left}</button>
 							<span class="us-create-titles">
 								<span class="us-create-title">${t("New test user")}</span>
 								<span class="us-create-sub"></span>
 							</span>
 						</div>
-						<p class="us-roles-intro">${t("Tick the roles this user should have. Unticked roles are removed when you save.")}</p>
-						<label class="us-field us-create-fields">
-							<span>${t("Full name")}</span>
-							<input name="full_name" type="text" placeholder="${t("e.g. Priya Accounts")}" required>
-						</label>
-						<label class="us-field us-create-fields">
-							<span>${t("Email")}</span>
-							<input name="email" type="email" placeholder="priya.accounts@example.com" required>
-						</label>
-						<div class="us-field">
+						<div class="us-create-grid us-create-fields">
+							<label class="us-field">
+								<span>${t("Full name")}</span>
+								<input class="us-new-name" type="text" placeholder="${t("e.g. Priya Accounts")}" ${NO_AUTOFILL}>
+							</label>
+							<label class="us-field">
+								<span>${t("Email")}</span>
+								<input class="us-new-email" type="text" inputmode="email" placeholder="name@example.com" ${NO_AUTOFILL}>
+							</label>
+						</div>
+						<div class="us-field us-profiles" hidden>
+							<span>${t("Role profiles")}</span>
+							<div class="us-profile-strip" role="group" aria-label="${t("Role profiles")}"></div>
+						</div>
+						<div class="us-field us-roles-field">
 							<span class="us-field-row">
-								<span>${t("Roles")} <span class="us-picked-count"></span></span>
-								<span class="us-type-hint"></span>
+								<span>${t("Roles")}</span>
+								<span class="us-picked-count"></span>
 							</span>
 							<input class="us-role-search" type="text" placeholder="${t("Filter roles")}">
 								<div class="us-role-list"><div class="us-empty">${t("Loading roles...")}</div></div>
 						</div>
 						<div class="us-create-actions">
+							<span class="us-form-status"></span>
 							<button type="button" class="us-btn us-create-only">${t("Create")}</button>
 							<button type="submit" class="us-btn us-btn--primary">${t("Create & switch")}</button>
 							<button type="button" class="us-btn us-roles-cancel">${t("Cancel")}</button>
@@ -367,7 +434,6 @@
 
 					<div class="us-info">
 						<div class="us-create-head">
-							<button type="button" class="us-icon-btn us-info-back" aria-label="${t("Back")}">${ICONS.chevron_left}</button>
 							<span class="us-create-titles"><span class="us-create-title">${t("How to use User Switcher")}</span></span>
 						</div>
 						${info_html()}
@@ -375,7 +441,6 @@
 
 					<div class="us-access">
 						<div class="us-create-head">
-							<button type="button" class="us-icon-btn us-access-back" aria-label="${t("Back")}">${ICONS.chevron_left}</button>
 							<span class="us-create-titles">
 								<span class="us-create-title">${t("Doctype access")}</span>
 								<span class="us-access-sub">${t("Choose which roles can open and change a doctype")}</span>
@@ -383,8 +448,11 @@
 						</div>
 						<label class="us-field">
 							<span>${t("DocType")}</span>
-							<input class="us-access-doctype" type="text" list="us-access-doctypes" placeholder="${t("e.g. Sales Invoice")}" autocomplete="off" spellcheck="false">
-							<datalist id="us-access-doctypes"></datalist>
+							<span class="us-combo">
+								<input class="us-access-doctype" type="text" role="combobox" aria-expanded="false" aria-controls="us-access-options"
+									aria-autocomplete="list" placeholder="${t("Type to search, e.g. Sales Invoice")}" ${NO_AUTOFILL}>
+								<span class="us-combo-list" id="us-access-options" role="listbox" hidden></span>
+							</span>
 						</label>
 						<div class="us-access-summary"></div>
 						<div class="us-access-tools">
@@ -396,9 +464,12 @@
 						</div>
 						<div class="us-access-suggest"></div>
 						<div class="us-access-roles"></div>
-						<a class="us-access-advanced" href="/app/permission-manager">${t("Field-level and “only if creator” rules: open Role Permission Manager")}</a>
 						<div class="us-create-actions us-access-actions">
-							<span class="us-access-changes"></span>
+							<span class="us-access-foot">
+								<span class="us-access-changes"></span>
+								<a class="us-access-advanced" href="/app/permission-manager"
+									title="${t("Field-level and “only if creator” rules are set there")}">${t("Role Permission Manager")} ↗</a>
+							</span>
 							<button type="button" class="us-btn us-access-cancel">${t("Cancel")}</button>
 							<button type="button" class="us-btn us-btn--primary us-access-save" disabled>${t("Save")}</button>
 						</div>
@@ -406,9 +477,8 @@
 
 					<div class="us-footer">
 						<span class="us-hints">
-							<span><kbd>1</kbd>–<kbd>9</kbd> ${t("switch")}</span>
-							<span class="us-hint-back" title="${t("{0} from any page", [BACK_SHORTCUT_LABEL])}"><kbd>0</kbd> ${t("back")}</span>
-							<span><kbd>↑</kbd><kbd>↓</kbd><kbd>↵</kbd></span>
+							<span>${t("Press a number to switch")}</span>
+							<span class="us-hint-back" title="${t("{0} from any page", [BACK_SHORTCUT_LABEL])}">· ${t("{0} to go back", ["<b>0</b>"])}</span>
 						</span>
 						<span class="us-footer-actions">
 							<button class="us-info-btn" title="${t("How to use")}" aria-label="${t("How to use")}" aria-pressed="false">${ICONS.info}</button>
@@ -462,7 +532,15 @@
 		}
 
 		$root.find(".us-info-btn").on("click", () => show_info(!state.info));
-		$root.find(".us-info-back").on("click", () => show_info(false));
+		$root.find(".us-tile-roles").on("click", () => state.ctx && show_roles(state.ctx.current_user));
+		$root.find(".us-tile-access").on("click", () => show_access(true, route_doctype()));
+
+		// Leave whichever sub-screen is open and return to the user list
+		function go_back() {
+			if (state.info) show_info(false);
+			else if (state.access) show_access(false);
+			else if (state.creating) show_create(false);
+		}
 
 		function close() {
 			state.info = false;
@@ -502,13 +580,18 @@
 			if (!is_open()) return;
 
 			if (e.key === "Escape") {
-				if (state.info) show_info(false);
-				else if (state.access) show_access(false);
-				else if (state.creating) show_create(false);
+				if (state.info || state.access || state.creating) go_back();
 				else {
 					close();
 					$trigger.trigger("focus");
 				}
+				return;
+			}
+			// Backspace also goes back, but never while typing: deleting text must not throw away a half-filled form
+			const typing = $(e.target).is("input:not([type=checkbox]):not([type=radio]), textarea, select, [contenteditable]");
+			if (e.key === "Backspace" && !typing && (state.info || state.access || state.creating)) {
+				e.preventDefault();
+				go_back();
 				return;
 			}
 			if (state.creating || state.info || state.access) return; // let the form have every other key
@@ -675,50 +758,27 @@
 			const real = ctx.real_user;
 			$identity.html(`
 				<div class="us-identity-main">
+					<button class="us-icon-btn us-head-back" aria-label="${t("Back")}" title="${t("Back (Esc)")}">${ICONS.chevron_left}</button>
 					${avatar(me, "us-avatar--lg")}
 					<div class="us-identity-text">
 						<span class="us-eyebrow">${ctx.is_switched ? t("Viewing as") : t("Signed in as")}</span>
-						<span class="us-identity-name">${esc(display_name(me))}</span>
-						<span class="us-identity-email">${esc(me.name)}</span>
+						<span class="us-identity-name" title="${esc(me.name)}">${esc(display_name(me))}</span>
 					</div>
+					${
+						ctx.is_switched
+							? `<button class="us-switch-back" title="${t("Back to {0} ({1} from any page)", [esc(display_name(real)), BACK_SHORTCUT_LABEL])}">
+								${ICONS.back}<span class="us-switch-back-text">${t("Back to {0}", [esc(display_name(real))])}</span><kbd>0</kbd>
+							</button>`
+							: ""
+					}
 					<button class="us-icon-btn us-close" aria-label="${t("Close")}">${ICONS.close}</button>
 				</div>
-				<div class="us-actions">
-					${
-						// Administrator's roles can't be edited (the server refuses), so don't offer it
-						me.name === "Administrator"
-							? ""
-							: `<button class="us-edit-roles" title="${t("Give or remove roles (access) for {0}", [esc(display_name(me))])}">
-								${ICONS.shield}
-								<span class="us-edit-roles-text">
-									<b>${t("Manage roles")}</b>
-									<small>${t("Roles of {0}", [esc(display_name(me))])}</small>
-								</span>
-								${ICONS.chevron_right}
-							</button>`
-					}
-					<button class="us-edit-roles us-edit-access" title="${t("Choose which roles can read, write or create a doctype")}">
-						${ICONS.key}
-						<span class="us-edit-roles-text">
-							<b>${t("Doctype access")}</b>
-							<small>${route_doctype() ? esc(route_doctype()) : t("Role permissions")}</small>
-						</span>
-						${ICONS.chevron_right}
-					</button>
-				</div>
-				${
-					ctx.is_switched
-						? `<button class="us-switch-back">
-							${ICONS.back}
-							<span>${t("Back to {0}", [`<b>${esc(display_name(real))}</b>`])}</span>
-							<kbd class="us-back-key" title="${t("or {0} from any page", [BACK_SHORTCUT_LABEL])}">0</kbd>
-						</button>`
-						: ""
-				}
 			`);
+			// Administrator's roles can't be edited (the server refuses), so don't offer it
+			$root.find(".us-tile-roles").prop("hidden", me.name === "Administrator");
+			$root.find(".us-tile-access").attr("title", route_doctype() ? t("Who can open and change {0}", [route_doctype()]) : t("Give a role access to a doctype"));
 			$identity.find(".us-close").on("click", close);
-			$identity.find(".us-edit-roles:not(.us-edit-access)").on("click", () => show_roles(me));
-			$identity.find(".us-edit-access").on("click", () => show_access(true, route_doctype()));
+			$identity.find(".us-head-back").on("click", go_back);
 			$identity.find(".us-switch-back").on("click", switch_back);
 		}
 
@@ -784,17 +844,15 @@
 			const pinned = store.is_pinned(u.name);
 			const title = uses ? t("Switched {0} times", [uses]) : "";
 			const $item = $(`
-				<div class="us-item" role="option" tabindex="-1" title="${esc(title)}">
-					${drag ? `<span class="us-grip" title="${t("Drag to reorder")}">${ICONS.grip}</span>` : `<span class="us-grip us-grip--off"></span>`}
-					${key}
+				<div class="us-item" role="option" tabindex="-1" title="${esc(drag ? [title, t("Drag to reorder")].filter(Boolean).join(" · ") : title)}">
 					${avatar(u)}
 					<div class="us-item-text">
-						<span class="us-item-name"><span class="us-item-name-text">${esc(display_name(u))}</span>${website}${now}</span>
+						<span class="us-item-name"><span class="us-item-name-text">${esc(display_name(u))}</span>${now}${website}</span>
 						<span class="us-item-email">${esc(u.name)}</span>
 					</div>
 					<button class="us-pin ${pinned ? "is-pinned" : ""}" title="${pinned ? t("Unpin") : t("Pin to top")}"
 						aria-label="${pinned ? t("Unpin") : t("Pin to top")}" aria-pressed="${pinned}">${ICONS.star}</button>
-					<span class="us-enter">${ICONS.enter}</span>
+					${key}
 				</div>
 			`)
 				.attr({ "data-index": index, "data-name": u.name })
@@ -854,14 +912,13 @@
 
 		// ---------- create test user ----------
 
-		const $name = $create.find("[name=full_name]");
-		const $email = $create.find("[name=email]");
+		const $name = $create.find(".us-new-name");
+		const $email = $create.find(".us-new-email");
 		const $role_search = $create.find(".us-role-search");
 		const $role_list = $create.find(".us-role-list");
 		let email_touched = false;
 
 		$root.find(".us-new").on("click", () => show_create(true));
-		$create.find(".us-create-cancel").on("click", () => show_create(false));
 
 		function show_create(on) {
 			if (on && state.access) show_access(false);
@@ -870,7 +927,7 @@
 			if (on && state.info) show_info(false);
 			$root.toggleClass("us-creating", on).removeClass("us-roles-mode");
 			$create.find(".us-create-title").text(t("New test user"));
-			$create.find(".us-create-sub").text("");
+			$create.find(".us-create-sub").text(t("Create a user, then switch into it. No email is sent."));
 			if (!on) {
 				$search.trigger("focus");
 				return;
@@ -882,7 +939,46 @@
 			$name.val(seed).trigger("input");
 			setTimeout(() => $name.trigger("focus"), 30);
 			load_roles();
+			load_profiles();
 		}
+
+		// ---------- role profiles: one click ticks a profile's roles ----------
+
+		const $profiles = $create.find(".us-profiles");
+		const $profile_strip = $create.find(".us-profile-strip");
+
+		function load_profiles() {
+			if (state.profiles) return paint_profiles();
+			frappe.call({ method: `${API}.get_role_profiles`, type: "GET" }).then((r) => {
+				state.profiles = r.message || [];
+				paint_profiles();
+			});
+		}
+
+		// A profile is "on" while the ticked roles are exactly its roles
+		const profile_matches = (p) => p.roles.length === state.picked.size && p.roles.every((r) => state.picked.has(r));
+
+		function paint_profiles() {
+			const list = state.profiles || [];
+			$profiles.prop("hidden", !list.length || !!state.editing);
+			$profile_strip.html(
+				list
+					.map((p, i) => `<button type="button" class="us-profile ${profile_matches(p) ? "is-on" : ""}" data-i="${i}"
+						aria-pressed="${profile_matches(p)}" title="${esc(p.roles.join(", "))}">
+						<span>${esc(p.name)}</span><span class="us-profile-count">${p.roles.length}</span>
+					</button>`)
+					.join("")
+			);
+		}
+
+		$profile_strip.on("click", ".us-profile", function () {
+			const p = state.profiles[this.dataset.i];
+			// Clicking the active profile clears it; any other replaces the ticked roles with its roles
+			const known = new Set((state.roles || []).map((r) => r.name));
+			state.picked = profile_matches(p) ? new Set() : new Set(p.roles.filter((r) => known.has(r)));
+			paint_roles();
+			this.scrollIntoView({ block: "nearest", inline: "nearest" });
+		});
 
 		// ---------- manage roles of the signed-in user ----------
 
@@ -892,7 +988,7 @@
 			state.original = new Set();
 			$root.addClass("us-roles-mode");
 			$create.find(".us-create-title").text(t("Manage roles"));
-			$create.find(".us-create-sub").text(`${display_name(user)} · ${user.name}`);
+			$create.find(".us-create-sub").text(t("Tick the roles {0} should have. Unticked roles are removed on save.", [display_name(user)]));
 			frappe.call({ method: `${API}.get_user_roles`, args: { user: user.name }, type: "GET" }).then((r) => {
 				state.original = new Set(r.message || []);
 				state.picked = new Set(state.original);
@@ -945,21 +1041,23 @@
 
 		function paint_roles() {
 			if (!state.roles) return;
-			const q = $role_search.val().trim().toLowerCase();
-			const rows = state.roles.filter((r) => !q || r.name.toLowerCase().includes(q));
+			const q = $role_search.val().trim();
+			const rows = search(state.roles, q, (r) => r.name);
 			const row_html = (r) => `<label class="us-role">
 				<input type="checkbox" value="${esc(r.name)}" ${state.picked.has(r.name) ? "checked" : ""}>
-				<span>${esc(r.name)}</span>
+				<span class="us-role-name">${mark_match(r.name, q)}</span>
 				${r.desk_access ? "" : `<span class="us-chip us-chip--web">${t("Portal")}</span>`}
+				<span class="us-role-tag"></span>
 			</label>`;
-			// Editing: roles the user already has go first (by the saved set, so rows don't jump while ticking)
-			const current = state.editing ? rows.filter((r) => state.original.has(r.name)) : [];
-			const others = state.editing ? rows.filter((r) => !state.original.has(r.name)) : rows;
-			const group = (title, list) => (list.length && current.length ? `<div class="us-group">${title}</div>` : "") + list.map(row_html).join("");
+			// Grouped by what the user had when the list was drawn, so rows don't jump while ticking
+			const first = state.editing ? state.original : state.picked;
+			const top = rows.filter((r) => first.has(r.name));
+			const rest = rows.filter((r) => !first.has(r.name));
+			const head = state.editing ? t("Current roles ({0})", [top.length]) : t("Selected ({0})", [top.length]);
+			const group = (title, list) => (list.length ? `<div class="us-group">${title}</div>` + list.map(row_html).join("") : "");
 			$role_list.html(
 				rows.length
-					? (current.length ? `<div class="us-group">${t("Current roles ({0})", [current.length])}</div>` + current.map(row_html).join("") : "") +
-							group(t("Other roles"), others)
+					? group(head, top) + (top.length ? group(t("Other roles"), rest) : rest.map(row_html).join(""))
 					: `<div class="us-empty">${t("No roles match")}</div>`
 			);
 			$role_list.find("input").on("change", function () {
@@ -971,17 +1069,34 @@
 
 		function paint_picked() {
 			const picked = [...state.picked];
-			// Frappe derives the user type from the roles: any desk-access role makes a System User
-			const desk = picked.some((r) => state.roles?.find((x) => x.name === r)?.desk_access);
-			$create
-				.find(".us-type-hint")
-				.text(picked.length ? (desk ? t("→ System User") : t("→ Website User")) : t("none → Website User"));
+			$create.find(".us-picked-count").text(t("{0} selected", [picked.length]));
+			const $status = $create.find(".us-form-status");
 
 			if (state.editing) {
-				$create.find(".us-picked-count").text(t("· {0} selected", [picked.length]));
-				const changed = picked.length !== state.original.size || picked.some((r) => !state.original.has(r));
-				$create.find(".us-roles-save").prop("disabled", !changed);
+				const added = picked.filter((r) => !state.original.has(r));
+				const removed = [...state.original].filter((r) => !state.picked.has(r));
+				$status.html(
+					added.length || removed.length
+						? `<span class="us-status-add">${t("{0} added", [added.length])}</span> · <span class="us-status-remove">${t("{0} removed", [removed.length])}</span>`
+						: t("No changes yet")
+				);
+				$role_list.find(".us-role").each(function () {
+					const name = $(this).find("input").val();
+					const adding = state.picked.has(name) && !state.original.has(name);
+					const removing = !state.picked.has(name) && state.original.has(name);
+					$(this).toggleClass("is-adding", adding).toggleClass("is-removing", removing)
+						.find(".us-role-tag").text(adding ? t("Adding") : removing ? t("Removing") : "");
+				});
+				$create.find(".us-roles-save").prop("disabled", !added.length && !removed.length);
+				return;
 			}
+			$profile_strip.find(".us-profile").each(function () {
+				const on = profile_matches(state.profiles[this.dataset.i]);
+				$(this).toggleClass("is-on", on).attr("aria-pressed", on);
+			});
+			// Frappe derives the user type from the roles: any desk-access role makes a System User
+			const desk = picked.some((r) => state.roles?.find((x) => x.name === r)?.desk_access);
+			$status.html(t("User type: {0}", [`<b>${desk ? t("System User") : t("Website User")}</b>`]));
 		}
 
 		$create.on("submit", (e) => {
@@ -1036,7 +1151,7 @@
 		const NEEDS = { submit: ["write"], cancel: ["submit"], amend: ["cancel"], import: ["create"] };
 		const $access = $root.find(".us-access");
 		const $dt_input = $access.find(".us-access-doctype");
-		const $dt_list = $access.find("datalist");
+		const $dt_list = $access.find(".us-combo-list");
 		const $access_roles = $access.find(".us-access-roles");
 		const $role_find = $access.find(".us-access-role-search");
 		const $suggest = $access.find(".us-access-suggest");
@@ -1059,24 +1174,87 @@
 			setTimeout(() => $dt_input.trigger("focus"), 30);
 		}
 
-		$access.find(".us-access-back, .us-access-cancel").on("click", () => show_access(false));
+		$access.find(".us-access-cancel").on("click", () => show_access(false));
 
-		$dt_input.on("input", () => {
+		// ----- DocType picker: our own list, so it matches the widget (a <datalist> uses the browser's menu) -----
+
+		let dt_options = [];
+		let dt_active = -1;
+		let dt_request = 0;
+
+		function open_dt_list(open) {
+			$dt_list.prop("hidden", !open || !$dt_list.children().length);
+			$dt_input.attr("aria-expanded", String(!$dt_list.prop("hidden")));
+		}
+
+		function paint_dt_list(q) {
+			const mark = (name) => mark_match(name, q);
+			$dt_list.html(
+				dt_options.length
+					? dt_options
+							.map((d, i) => `<span class="us-combo-option ${i === dt_active ? "is-active" : ""}" role="option" id="us-dt-${i}"
+								aria-selected="${i === dt_active}" data-i="${i}">
+								<span class="us-combo-name">${mark(d.name)}</span><span class="us-combo-meta">${esc(d.module || "")}</span>
+							</span>`)
+							.join("")
+					: `<span class="us-combo-empty">${t("No DocType matches “{0}”", [esc(q)])}</span>`
+			);
+			$dt_input.attr("aria-activedescendant", dt_active >= 0 ? `us-dt-${dt_active}` : null);
+			open_dt_list(true);
+		}
+
+		function pick_dt(name) {
+			$dt_input.val(name);
+			open_dt_list(false);
+			load_access(name);
+		}
+
+		$dt_input.on("input focus", (e) => {
 			clearTimeout(dt_timer);
+			const q = $dt_input.val().trim();
+			// Focusing a field that already shows the loaded doctype shouldn't pop the list open
+			if (e.type === "focus" && q === state.access?.data?.doctype) return;
 			dt_timer = setTimeout(() => {
-				frappe.call({ method: `${API}.search_doctypes`, args: { txt: $dt_input.val().trim() }, type: "GET" }).then((r) => {
-					$dt_list.html((r.message || []).map((d) => `<option value="${esc(d)}"></option>`).join(""));
-					// Picking a suggestion fires input, not change, in some browsers
-					if ((r.message || []).includes($dt_input.val())) load_access($dt_input.val());
+				const request = ++dt_request;
+				frappe.call({ method: `${API}.search_doctypes`, args: { txt: q }, type: "GET" }).then((r) => {
+					if (request !== dt_request || !$dt_input.is(":focus")) return;
+					dt_options = r.message || [];
+					dt_active = dt_options.length ? 0 : -1;
+					paint_dt_list(q);
 				});
-			}, 200);
+			}, e.type === "focus" ? 0 : 150);
 		});
-		$dt_input.on("change", () => $dt_input.val().trim() && load_access($dt_input.val().trim()));
+
 		$dt_input.on("keydown", (e) => {
-			if (e.key === "Enter") {
+			const open = !$dt_list.prop("hidden");
+			if ((e.key === "ArrowDown" || e.key === "ArrowUp") && dt_options.length) {
 				e.preventDefault();
-				$dt_input.trigger("change");
+				dt_active = (dt_active + (e.key === "ArrowDown" ? 1 : -1) + dt_options.length) % dt_options.length;
+				paint_dt_list($dt_input.val().trim());
+				$dt_list.find(".is-active")[0]?.scrollIntoView({ block: "nearest" });
+			} else if (e.key === "Enter") {
+				e.preventDefault();
+				const typed = $dt_input.val().trim();
+				const exact = dt_options.find((d) => d.name.toLowerCase() === typed.toLowerCase());
+				if (open && dt_options[dt_active]) pick_dt(dt_options[dt_active].name);
+				else if (exact || typed) pick_dt(exact ? exact.name : typed);
+			} else if (e.key === "Escape" && open) {
+				// Close only the list, not the whole screen
+				e.preventDefault();
+				e.stopPropagation();
+				open_dt_list(false);
 			}
+		});
+
+		// mousedown, not click: picking must happen before the input's blur closes the list
+		$dt_list.on("mousedown", ".us-combo-option", function (e) {
+			e.preventDefault();
+			pick_dt(dt_options[this.dataset.i].name);
+		});
+		$dt_input.on("blur", () => {
+			setTimeout(() => open_dt_list(false), 100);
+			// Leaving the field with a half-typed name puts the loaded doctype back
+			if (state.access?.data && !$dt_input.val().trim()) $dt_input.val(state.access.data.doctype);
 		});
 
 		function load_access(doctype) {
@@ -1144,7 +1322,7 @@
 		function paint_access() {
 			const data = state.access?.data;
 			const $summary = $access.find(".us-access-summary").empty();
-			$access.find(".us-access-tools, .us-access-advanced, .us-access-actions").toggle(!!data);
+			$access.find(".us-access-tools, .us-access-actions").toggle(!!data);
 			if (!data) {
 				$access_roles.html(empty_state(t("Type a doctype name above, for example Sales Invoice.")));
 				return;
@@ -1152,8 +1330,8 @@
 			const show_all = $access_more.prop("checked");
 			const shown_rights = data.rights.filter((r) => show_all || COMMON_RIGHTS.includes(r));
 			const all_rows = access_rows();
-			const q = $role_find.val().trim().toLowerCase();
-			const rows = all_rows.filter((r) => !q || r.role.toLowerCase().includes(q));
+			const q = $role_find.val().trim();
+			const rows = search(all_rows, q, (r) => r.role);
 			const me = state.ctx?.current_user || boot_user_info(data.user);
 
 			// What the viewed user ends up with, from every role they have (including automatic ones)
@@ -1208,7 +1386,7 @@
 
 			// Roles without a rule yet that match the search: one click adds them as a row
 			const listed = new Set(all_rows.map((r) => r.role));
-			const addable = q ? data.assignable_roles.filter((r) => !listed.has(r) && r.toLowerCase().includes(q)).slice(0, 8) : [];
+			const addable = q ? search(data.assignable_roles.filter((r) => !listed.has(r)), q).slice(0, 8) : [];
 			$suggest.html(
 				addable.length
 					? `<span class="us-group">${t("Add a role")}</span>` +
@@ -1246,6 +1424,19 @@
 			else $access_roles.find(".us-right").first().trigger("focus");
 		});
 		$access_more.on("change", paint_access);
+
+		// Role Permission Manager is for System Managers only. While switched into someone without that
+		// role the page would say Not permitted, so go back to your own account first and open it there.
+		$access.find(".us-access-advanced").on("click", function (e) {
+			const roles = frappe.user_roles || frappe.boot?.user?.roles || [];
+			if (!who.is_switched || current_user() === "Administrator" || roles.includes("System Manager")) return;
+			e.preventDefault();
+			if (has_access_edits()) {
+				frappe.show_alert?.({ message: t("Save or cancel your changes first"), indicator: "orange" });
+				return;
+			}
+			switch_to({ name: who.real, full_name: who.real_full_name || who.real }, { back: true, to: this.href });
+		});
 
 		$access.find(".us-access-save").on("click", () => {
 			const $buttons = $access.find(".us-btn").prop("disabled", true);
