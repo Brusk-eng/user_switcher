@@ -246,6 +246,25 @@ class TestDoctypeAccess(IntegrationTestCase):
 	def test_automatic_roles_refused(self):
 		self.assertRaises(frappe.ValidationError, api.set_doctype_access, self.DOCTYPE, {"All": {"read": 1}})
 
+	def test_match_rank_like_frappe_search(self):
+		self.assertTrue(api._match_rank("Sales Invoice", "inv sal"))
+		self.assertTrue(api._match_rank("Sales Invoice", "si"))
+		self.assertFalse(api._match_rank("Sales Invoice", "purchase"))
+		self.assertLess(api._match_rank("Sales Invoice", "sales"), api._match_rank("Sales Invoice", "voice"))
+
+	def test_search_puts_prefix_matches_first(self):
+		names = [d["name"] for d in api.search_doctypes("rol")]
+		self.assertEqual(names[0], "Role")
+		self.assertNotIn("DocType", [d["name"] for d in api.search_doctypes("doctype")])
+
+	def test_role_profiles_list_their_roles(self):
+		if not frappe.db.exists("Role Profile", "US Access Profile"):
+			frappe.get_doc(
+				{"doctype": "Role Profile", "role_profile": "US Access Profile", "roles": [{"role": "US Access Tester"}, {"role": "All"}]}
+			).insert()
+		profile = next(p for p in api.get_role_profiles() if p["name"] == "US Access Profile")
+		self.assertEqual(profile["roles"], ["US Access Tester"])
+
 	def test_returns_user_roles(self):
 		out = api.get_doctype_access(self.DOCTYPE)
 		self.assertIn("System Manager", out["user_roles"])

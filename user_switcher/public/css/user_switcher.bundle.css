@@ -8,8 +8,17 @@
 	--us-bg-subtle: var(--subtle-fg, #f7f7f8);
 	--us-hover: var(--fg-hover-color, #f1f2f4);
 	--us-border: var(--border-color, #e7e8ea);
+	--us-border-strong: #d4d6da;
 	--us-text: var(--text-color, #1f2328);
+	--us-label: #4b5563;
 	--us-muted: var(--text-muted, #6b7280);
+	--us-ok: #166534;
+	--us-ok-bg: #e7f6ec;
+	--us-ok-strong: #dcfce7;
+	--us-ok-border: #86d9a3;
+	--us-bad: #b91c1c;
+	--us-bad-bg: #fdecec;
+	--us-info: #1d4ed8;
 	--us-accent: #171717;
 	--us-accent-fg: #ffffff;
 	--us-warn: #b45309;
@@ -34,6 +43,15 @@
 
 [data-theme="dark"] #us-floating-container {
 	color-scheme: dark;
+	--us-border-strong: rgba(255, 255, 255, 0.16);
+	--us-label: rgba(255, 255, 255, 0.72);
+	--us-ok: #4ade80;
+	--us-ok-bg: rgba(74, 222, 128, 0.12);
+	--us-ok-strong: rgba(74, 222, 128, 0.18);
+	--us-ok-border: rgba(74, 222, 128, 0.5);
+	--us-bad: #f87171;
+	--us-bad-bg: rgba(248, 113, 113, 0.12);
+	--us-info: #93c5fd;
 	--us-accent: #fafafa;
 	--us-accent-fg: #171717;
 	--us-warn: #fbbf24;
@@ -49,6 +67,11 @@
 #us-floating-container *::before,
 #us-floating-container *::after {
 	box-sizing: border-box;
+}
+
+/* Frappe's desk styles don't hide [hidden]; the widget relies on it (e.g. no Manage roles for Administrator) */
+#us-floating-container [hidden] {
+	display: none !important;
 }
 
 #us-floating-container button {
@@ -224,7 +247,7 @@
 	position: absolute;
 	right: 0;
 	bottom: 54px;
-	width: 460px;
+	width: 560px;
 	max-width: calc(100vw - 40px);
 	max-height: min(760px, calc(100vh - 100px));
 	display: flex;
@@ -252,7 +275,7 @@
 
 /* Identity header */
 #us-floating-container .us-identity {
-	padding: 14px 14px 12px;
+	padding: 12px;
 	background: var(--us-bg-subtle);
 	border-bottom: 1px solid var(--us-border);
 }
@@ -282,21 +305,9 @@
 	color: var(--us-muted);
 }
 
-#us-floating-container.us-switched .us-eyebrow {
-	color: var(--us-warn);
-}
-
 #us-floating-container .us-identity-name {
 	font-size: 14px;
 	font-weight: 600;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-#us-floating-container .us-identity-email {
-	font-size: 11px;
-	color: var(--us-muted);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -318,24 +329,85 @@
 	color: var(--us-text);
 }
 
+/* Back arrow left of the avatar: only on sub-screens (guide, forms, Doctype access) */
+#us-floating-container .us-head-back {
+	display: none;
+	margin-right: -4px;
+	color: var(--us-text);
+}
+
+#us-floating-container.us-info-mode .us-head-back,
+#us-floating-container.us-creating .us-head-back,
+#us-floating-container.us-access-mode .us-head-back {
+	display: flex;
+}
+
+/* Outlined "Back to …" button in the header; the 0 key does the same */
 #us-floating-container .us-switch-back {
-	margin-top: 10px;
-	width: 100%;
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 8px 10px;
+	gap: 6px;
+	height: 34px;
+	max-width: 200px;
+	flex-shrink: 0;
+	padding: 0 8px 0 12px;
+	border: 1px solid var(--us-border-strong);
 	border-radius: 8px;
+	background: var(--us-bg);
 	font-size: 12px;
-	text-align: left;
-	color: var(--us-warn);
-	background: var(--us-warn-bg);
-	border: 1px solid var(--us-warn-border);
-	transition: filter 0.15s;
+	font-weight: 500;
+	color: var(--us-text);
 }
 
 #us-floating-container .us-switch-back:hover {
-	filter: brightness(0.97);
+	background: var(--us-hover);
+}
+
+#us-floating-container .us-switch-back svg {
+	width: 14px;
+	height: 14px;
+}
+
+#us-floating-container .us-switch-back-text {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+/* Manage roles · Doctype access · New test user */
+#us-floating-container .us-tiles {
+	display: flex;
+	gap: 8px;
+	padding: 12px 12px 0;
+}
+
+#us-floating-container .us-tile {
+	flex: 1 1 0;
+	min-width: 0;
+	height: 56px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	border: 1px solid var(--us-border);
+	border-radius: 10px;
+	background: var(--us-bg);
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--us-text);
+	transition: background 0.15s, border-color 0.15s;
+}
+
+#us-floating-container .us-tile:hover {
+	background: var(--us-hover);
+	border-color: var(--us-border-strong);
+}
+
+#us-floating-container .us-tile svg {
+	width: 18px;
+	height: 18px;
 }
 
 /* Search */
@@ -348,7 +420,7 @@
 
 #us-floating-container .us-search-icon {
 	position: absolute;
-	left: 10px;
+	left: 11px;
 	display: flex;
 	color: var(--us-muted);
 	pointer-events: none;
@@ -356,13 +428,13 @@
 
 #us-floating-container .us-search input {
 	width: 100%;
-	height: 36px;
-	padding: 0 92px 0 34px;
+	height: 38px;
+	padding: 0 100px 0 36px;
 	font: inherit;
-	font-size: 13px;
+	font-size: 14px;
 	color: var(--us-text);
-	background: var(--control-bg, var(--us-bg-subtle));
-	border: 1px solid transparent;
+	background: var(--us-bg);
+	border: 1px solid var(--us-border-strong);
 	border-radius: 9px;
 	outline: none;
 	transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
@@ -373,8 +445,7 @@
 }
 
 #us-floating-container .us-search input:focus {
-	background: var(--us-bg);
-	border-color: var(--us-border);
+	border-color: var(--us-muted);
 	box-shadow: 0 0 0 3px var(--us-hover);
 }
 
@@ -394,11 +465,13 @@
 }
 
 #us-floating-container .us-filter {
-	padding: 5px 10px;
+	height: 28px;
+	padding: 0 14px;
 	border-radius: 999px;
 	font-size: 12px;
-	line-height: 1.2;
-	color: var(--us-muted);
+	font-weight: 500;
+	background: var(--us-hover);
+	color: var(--us-label);
 	transition: background 0.15s, color 0.15s;
 }
 
@@ -432,13 +505,14 @@
 	color: var(--us-muted);
 }
 
-/* Fixed columns so every row lines up: grip | number | avatar | name | star | enter */
+/* Fixed columns so every row lines up: avatar | name + email | star | number */
 #us-floating-container .us-item {
 	display: grid;
-	grid-template-columns: 12px 22px 32px minmax(0, 1fr) 24px 16px;
+	grid-template-columns: 32px minmax(0, 1fr) 24px 24px;
 	align-items: center;
-	column-gap: 8px;
-	padding: 7px 8px 7px 4px;
+	column-gap: 12px;
+	min-height: 48px;
+	padding: 6px 10px;
 	border-radius: 9px;
 	cursor: pointer;
 	outline: none;
@@ -471,7 +545,7 @@
 }
 
 #us-floating-container .us-item-email {
-	font-size: 11px;
+	font-size: 12px;
 	color: var(--us-muted);
 	white-space: nowrap;
 	overflow: hidden;
@@ -502,27 +576,11 @@
 	cursor: default;
 }
 
-#us-floating-container .us-item.us-item--current .us-enter,
-#us-floating-container .us-item.us-item--current.is-active .us-enter {
-	visibility: hidden;
-}
-
 #us-floating-container .us-chip--web {
 	color: #2563eb;
 	background: rgba(37, 99, 235, 0.08);
 	border-color: rgba(37, 99, 235, 0.2);
 	flex-shrink: 0;
-}
-
-#us-floating-container .us-enter {
-	display: flex;
-	justify-content: center;
-	visibility: hidden;
-	color: var(--us-muted);
-}
-
-#us-floating-container .us-item.is-active .us-enter {
-	visibility: visible;
 }
 
 #us-floating-container .us-empty {
@@ -534,8 +592,7 @@
 
 /* Number shortcuts */
 #us-floating-container .us-num {
-	padding: 3px 0;
-	min-width: 0;
+	min-width: 22px;
 	margin: 0;
 	text-align: center;
 }
@@ -547,13 +604,6 @@
 #us-floating-container .us-item.is-active .us-num {
 	color: var(--us-text);
 	border-color: var(--us-muted);
-}
-
-#us-floating-container .us-back-key {
-	margin-left: auto;
-	color: var(--us-warn);
-	border-color: var(--us-warn-border);
-	background: transparent;
 }
 
 #us-floating-container .us-hints > .us-hint-back {
@@ -569,7 +619,6 @@
 	display: flex;
 	gap: 10px;
 	cursor: default;
-	padding-left: 38px;
 }
 
 #us-floating-container .us-skeleton .us-item-text {
@@ -611,23 +660,28 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: 8px;
-	padding: 8px 12px;
+	padding: 10px 12px;
 	border-top: 1px solid var(--us-border);
 	background: var(--us-bg-subtle);
-	font-size: 11px;
+	font-size: 12px;
 	color: var(--us-muted);
+}
+
+#us-floating-container .us-hints b {
+	font-weight: 600;
+	color: var(--us-text);
 }
 
 #us-floating-container .us-hints {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 4px;
 }
 
 #us-floating-container .us-hints > span {
 	display: inline-flex;
 	align-items: center;
-	gap: 3px;
+	gap: 4px;
 }
 
 
@@ -683,8 +737,6 @@
 
 #us-floating-container.us-info-mode .us-browse,
 #us-floating-container.us-info-mode .us-hints,
-#us-floating-container.us-info-mode .us-actions,
-#us-floating-container.us-info-mode .us-edit-roles,
 #us-floating-container.us-info-mode .us-switch-back {
 	display: none;
 }
@@ -694,7 +746,7 @@
 	position: sticky;
 	top: -12px;
 	z-index: 1;
-	margin: -12px 0 0 -6px;
+	margin: -12px 0 0;
 	padding: 12px 0 6px;
 	background: var(--us-bg);
 }
@@ -846,25 +898,6 @@
 	position: relative;
 }
 
-/* First grid column; empty (and inert) on rows that can't be dragged */
-#us-floating-container .us-grip {
-	display: flex;
-	justify-content: center;
-	color: var(--us-muted);
-	cursor: grab;
-	opacity: 0;
-	transition: opacity 0.12s;
-}
-
-#us-floating-container .us-grip svg {
-	width: 12px;
-	height: 12px;
-}
-
-#us-floating-container .us-item.is-active .us-grip {
-	opacity: 0.8;
-}
-
 /* While dragging, the row's slot shows as a faint dashed placeholder that the other rows slide around */
 #us-floating-container .us-item.is-dragging {
 	background: var(--us-hover);
@@ -892,32 +925,12 @@
 	}
 }
 
-/* ---------- "Test user" button in the filter row ---------- */
-
-#us-floating-container .us-new {
-	margin-left: auto;
-	display: flex;
-	align-items: center;
-	gap: 4px;
-	padding: 4px 8px;
-	border-radius: 999px;
-	font-size: 12px;
-	line-height: 1.2;
-	color: var(--us-muted);
-	border: 1px dashed var(--us-border);
+/* Pinned rows can be dragged by any part of the row */
+#us-floating-container .us-item[draggable="true"] {
+	cursor: grab;
 }
 
-#us-floating-container .us-new:hover {
-	color: var(--us-text);
-	border-color: var(--us-muted);
-}
-
-#us-floating-container .us-new svg {
-	width: 12px;
-	height: 12px;
-}
-
-/* ---------- Create test user ---------- */
+/* ---------- Sub-screens: New test user, Manage roles, Doctype access ---------- */
 
 #us-floating-container .us-browse {
 	display: flex;
@@ -926,134 +939,225 @@
 	flex: 1;
 }
 
-#us-floating-container .us-create {
+#us-floating-container .us-create,
+#us-floating-container .us-access {
 	display: none;
 	flex-direction: column;
-	gap: 10px;
-	padding: 10px 14px 14px;
-	overflow-y: auto;
-	min-height: 0;
+	gap: 12px;
 	flex: 1;
+	min-height: 0;
 	margin: 0;
+	padding: 14px 16px 0;
+	overflow-y: auto;
+	scrollbar-width: thin;
+}
+
+#us-floating-container.us-creating .us-create,
+#us-floating-container.us-access-mode .us-access {
+	display: flex;
 }
 
 #us-floating-container.us-creating .us-browse,
-#us-floating-container.us-creating .us-hints,
-#us-floating-container.us-creating .us-actions,
 #us-floating-container.us-creating .us-switch-back,
-#us-floating-container.us-creating .us-footer {
+#us-floating-container.us-creating .us-footer,
+#us-floating-container.us-access-mode .us-browse,
+#us-floating-container.us-access-mode .us-switch-back,
+#us-floating-container.us-access-mode .us-footer {
 	display: none;
 }
 
-#us-floating-container.us-creating .us-card {
-	width: 520px;
+/* Same size whatever the screen holds, so the popup never jumps while filtering */
+#us-floating-container.us-creating .us-card,
+#us-floating-container.us-access-mode .us-card {
+	height: min(760px, calc(100vh - 100px));
+}
+
+/* Doctype access is wider, so every role's rights fit on one line */
+#us-floating-container.us-access-mode .us-card {
+	width: 620px;
 	max-width: calc(100vw - 24px);
 }
 
-#us-floating-container.us-creating .us-create {
-	gap: 12px;
-	padding: 14px 16px 16px;
-}
-
-#us-floating-container.us-creating .us-create-title {
-	font-size: 15px;
-}
-
-#us-floating-container.us-creating .us-field {
-	font-size: 12px;
-}
-
-#us-floating-container.us-creating .us-field input[type="text"],
-#us-floating-container.us-creating .us-field input[type="email"] {
-	height: 36px;
-}
-
-#us-floating-container.us-creating .us-role-list {
-	min-height: 200px;
-	max-height: min(360px, 40vh);
-}
-
-#us-floating-container.us-creating .us-role {
-	padding: 6px 8px;
-	font-size: 13px;
-}
-
-#us-floating-container.us-creating .us-create-actions {
-	position: sticky;
-	bottom: -16px;
-	margin: auto -16px -16px;
-	padding: 12px 16px;
-	background: var(--us-bg);
-	border-top: 1px solid var(--us-border);
-}
-
-#us-floating-container.us-creating .us-btn {
-	height: 34px;
-	padding: 0 16px;
-	font-size: 13px;
-}
-
-#us-floating-container.us-creating .us-create {
-	display: flex;
-}
-
+/* Back arrow, title and one line of help: the same on every sub-screen */
 #us-floating-container .us-create-head {
 	display: flex;
 	align-items: center;
-	gap: 4px;
-	margin-left: -6px;
-	font-weight: 600;
-	font-size: 13px;
+	gap: 8px;
 }
 
-#us-floating-container .us-create-head .us-icon-btn {
-	align-self: center;
+#us-floating-container .us-create-titles {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+#us-floating-container .us-create-title {
+	font-size: 16px;
+	font-weight: 600;
+}
+
+#us-floating-container .us-create-sub,
+#us-floating-container .us-access-sub {
+	font-size: 12px;
+	color: var(--us-muted);
+}
+
+#us-floating-container .us-create-sub:empty {
+	display: none;
+}
+
+/* Fields */
+#us-floating-container .us-create-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
 }
 
 #us-floating-container .us-field {
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+	min-width: 0;
 	margin: 0;
-	font-size: 11px;
+	font-size: 12px;
 	font-weight: 500;
-	color: var(--us-muted);
+	color: var(--us-label);
 }
 
 #us-floating-container .us-field-row {
 	display: flex;
+	align-items: center;
 	justify-content: space-between;
-}
-
-#us-floating-container .us-type-hint {
-	font-weight: 400;
 }
 
 #us-floating-container .us-field input[type="text"],
 #us-floating-container .us-field input[type="email"] {
-	height: 32px;
-	padding: 0 10px;
+	height: 38px;
+	min-width: 0;
+	padding: 0 12px;
 	font: inherit;
 	font-size: 13px;
+	font-weight: 400;
 	color: var(--us-text);
-	background: var(--control-bg, var(--us-bg-subtle));
-	border: 1px solid transparent;
-	border-radius: 8px;
+	background: var(--us-bg);
+	border: 1px solid var(--us-border-strong);
+	border-radius: 9px;
 	outline: none;
 }
 
 #us-floating-container .us-field input:focus {
-	background: var(--us-bg);
-	border-color: var(--us-border);
+	border-color: var(--us-muted);
 	box-shadow: 0 0 0 3px var(--us-hover);
 }
 
+/* Filter boxes inside a screen are quieter than the fields */
+#us-floating-container .us-field input.us-role-search {
+	height: 36px;
+	background: var(--us-bg-subtle);
+	border-color: transparent;
+}
+
+#us-floating-container .us-picked-count {
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	background: var(--us-accent);
+	color: var(--us-accent-fg);
+}
+
+#us-floating-container.us-roles-mode .us-create-fields,
+#us-floating-container.us-roles-mode .us-profiles,
+#us-floating-container.us-roles-mode .us-create-only,
+#us-floating-container.us-roles-mode .us-create-actions [type="submit"],
+#us-floating-container .us-roles-save,
+#us-floating-container .us-roles-cancel {
+	display: none;
+}
+
+#us-floating-container.us-roles-mode .us-roles-save,
+#us-floating-container.us-roles-mode .us-roles-cancel {
+	display: inline-block;
+}
+
+/* Role profiles: one row that scrolls sideways */
+#us-floating-container .us-profile-strip {
+	display: flex;
+	gap: 6px;
+	overflow-x: auto;
+	padding: 2px 2px 6px;
+	margin: 0 -2px;
+	scroll-snap-type: x proximity;
+	scrollbar-width: thin;
+	/* fade the right edge so it reads as "more this way" */
+	-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+	mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+
+#us-floating-container .us-profile {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+	height: 30px;
+	padding: 0 6px 0 12px;
+	border: 1px solid var(--us-border-strong);
+	border-radius: 999px;
+	background: var(--us-bg);
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--us-text);
+	white-space: nowrap;
+	scroll-snap-align: start;
+	transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+#us-floating-container .us-profile:last-child {
+	margin-right: 24px;
+}
+
+#us-floating-container .us-profile:hover {
+	border-color: var(--us-muted);
+}
+
+#us-floating-container .us-profile-count {
+	min-width: 18px;
+	padding: 1px 6px;
+	border-radius: 999px;
+	font-size: 10px;
+	text-align: center;
+	background: var(--us-hover);
+	color: var(--us-muted);
+}
+
+#us-floating-container .us-profile.is-on {
+	border-color: var(--us-accent);
+	background: var(--us-accent);
+	color: var(--us-accent-fg);
+}
+
+#us-floating-container .us-profile.is-on .us-profile-count {
+	background: rgba(255, 255, 255, 0.2);
+	color: inherit;
+}
+
+[data-theme="dark"] #us-floating-container .us-profile.is-on .us-profile-count {
+	background: rgba(0, 0, 0, 0.15);
+}
+
+/* Role list */
+#us-floating-container .us-roles-field {
+	flex: 1;
+	min-height: 0;
+	gap: 8px;
+}
+
 #us-floating-container .us-role-list {
-	max-height: 150px;
+	flex: 1;
+	min-height: 180px;
 	overflow-y: auto;
-	border: 1px solid var(--us-border);
-	border-radius: 8px;
 	padding: 4px;
+	border: 1px solid var(--us-border);
+	border-radius: 9px;
 	scrollbar-width: thin;
 }
 
@@ -1061,62 +1165,108 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	min-height: 29px;
 	margin: 0;
-	padding: 4px 6px;
+	padding: 0 10px;
 	border-radius: 6px;
-	font-size: 12px;
-	font-weight: 400;
-	color: var(--us-text);
+	font-size: var(--text-sm, 13px);
+	font-weight: var(--font-weight-medium, 500);
+	letter-spacing: 0.02em;
+	color: var(--text-color, var(--us-text));
 	cursor: pointer;
 }
 
-#us-floating-container .us-role:hover {
-	background: var(--us-hover);
+#us-floating-container .us-role-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
-/* Own checkbox: Frappe's global input[type=checkbox] styling can hide the checked state */
-#us-floating-container .us-role input[type="checkbox"] {
-	-webkit-appearance: none;
-	appearance: none;
-	width: 15px;
-	height: 15px;
-	margin: 0;
-	flex-shrink: 0;
-	border: 1.5px solid var(--us-muted);
-	border-radius: 4px;
-	background: var(--us-bg) center / 11px no-repeat;
-	box-shadow: none;
-	cursor: pointer;
+#us-floating-container .us-role.is-removing .us-role-name {
+	color: var(--us-muted);
+	text-decoration: line-through;
 }
 
-#us-floating-container .us-role input[type="checkbox"]:checked {
-	background-color: var(--us-accent);
-	border-color: var(--us-accent);
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E");
+#us-floating-container .us-role-tag {
+	padding: 1px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 500;
 }
 
-[data-theme="dark"] #us-floating-container .us-role input[type="checkbox"]:checked {
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23171717' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E");
+#us-floating-container .us-role-tag:empty {
+	display: none;
 }
 
-#us-floating-container .us-role .us-chip {
-	margin-left: auto;
+#us-floating-container .us-role.is-adding .us-role-tag {
+	background: var(--us-ok-bg);
+	color: var(--us-ok);
 }
 
+#us-floating-container .us-role.is-removing .us-role-tag {
+	background: var(--us-bad-bg);
+	color: var(--us-bad);
+}
+
+/* Checkboxes use Frappe's own style (same as the Roles list on the User form); only drop its
+   right margin, since the rows space with gap */
+#us-floating-container .us-role,
+#us-floating-container .us-access-more {
+	--checkbox-right-margin: 0;
+}
+
+/* Bottom bar: what will change on the left, the buttons on the right */
 #us-floating-container .us-create-actions {
+	position: sticky;
+	bottom: 0;
+	z-index: 1;
 	display: flex;
-	justify-content: flex-end;
+	align-items: center;
 	gap: 8px;
-	padding-top: 2px;
+	flex-shrink: 0;
+	margin: auto -16px 0;
+	padding: 10px 16px;
+	border-top: 1px solid var(--us-border);
+	background: var(--us-bg-subtle);
+}
+
+#us-floating-container .us-form-status,
+#us-floating-container .us-access-changes {
+	flex: 1;
+	min-width: 0;
+	font-size: 12px;
+	color: var(--us-muted);
+}
+
+#us-floating-container .us-form-status b {
+	font-weight: 600;
+	color: var(--us-text);
+}
+
+#us-floating-container .us-status-add {
+	font-weight: 500;
+	color: var(--us-ok);
+}
+
+#us-floating-container .us-status-remove {
+	font-weight: 500;
+	color: var(--us-bad);
+}
+
+#us-floating-container .us-access-changes {
+	font-weight: 500;
+	color: var(--us-info);
 }
 
 #us-floating-container .us-btn {
-	height: 30px;
-	padding: 0 12px;
+	height: 34px;
+	padding: 0 16px;
 	border-radius: 8px;
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 500;
-	border: 1px solid var(--us-border);
+	border: 1px solid var(--us-border-strong);
 	background: var(--us-bg);
 	color: var(--us-text);
 }
@@ -1141,240 +1291,89 @@
 	pointer-events: none;
 }
 
-/* "Manage roles" + "Doctype access" tiles in the identity header, side by side */
-#us-floating-container .us-actions {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-	gap: 8px;
-	margin-top: 12px;
-}
-
-#us-floating-container .us-edit-roles {
-	min-width: 0;
-	width: 100%;
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	padding: 9px 10px;
-	border-radius: 8px;
-	text-align: left;
-	color: var(--us-text);
-	background: var(--us-bg);
-	border: 1px solid var(--us-border);
-	transition: border-color 0.15s, background 0.15s;
-}
-
-#us-floating-container .us-edit-roles:hover {
-	background: var(--us-hover);
-	border-color: var(--us-muted);
-}
-
-#us-floating-container .us-edit-roles svg {
-	width: 18px;
-	height: 18px;
-	flex-shrink: 0;
-}
-
-#us-floating-container .us-edit-roles svg:last-child {
-	width: 14px;
-	height: 14px;
-	color: var(--us-muted);
-}
-
-#us-floating-container .us-edit-roles-text {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-width: 0;
-	line-height: 1.3;
-}
-
-#us-floating-container .us-edit-roles-text b {
-	font-size: 13px;
-	font-weight: 600;
-}
-
-#us-floating-container .us-edit-roles-text small {
-	font-size: 11px;
-	color: var(--us-muted);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-/* Roles mode reuses the create form: no name/email, Save instead of Create */
-#us-floating-container .us-roles-save,
-#us-floating-container .us-roles-cancel,
-#us-floating-container .us-roles-intro,
-#us-floating-container .us-create-sub,
-#us-floating-container.us-roles-mode .us-create-fields,
-#us-floating-container.us-roles-mode .us-create-only,
-#us-floating-container.us-roles-mode .us-create-actions [type="submit"] {
-	display: none;
-}
-
-#us-floating-container.us-roles-mode .us-roles-save,
-#us-floating-container.us-roles-mode .us-roles-cancel {
-	display: inline-block;
-}
-
-#us-floating-container .us-create-titles {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-}
-
-#us-floating-container.us-roles-mode .us-card {
-	width: 520px;
-	max-width: calc(100vw - 24px);
-	max-height: min(760px, calc(100vh - 100px));
-}
-
-#us-floating-container.us-roles-mode .us-create {
-	gap: 12px;
-	padding: 14px 16px 16px;
-}
-
-#us-floating-container.us-roles-mode .us-create-title {
-	font-size: 15px;
-}
-
-#us-floating-container.us-roles-mode .us-create-sub {
-	display: block;
-	font-size: 12px;
-	font-weight: 400;
-	color: var(--us-muted);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-#us-floating-container.us-roles-mode .us-roles-intro {
-	display: block;
-	margin: 0;
-	padding: 8px 10px;
-	border-radius: 8px;
-	font-size: 12px;
-	color: var(--us-muted);
-	background: var(--us-bg-subtle);
-}
-
-#us-floating-container.us-roles-mode .us-field {
-	font-size: 12px;
-}
-
-#us-floating-container .us-picked-count {
-	display: none;
-}
-
-#us-floating-container.us-roles-mode .us-picked-count {
-	display: inline;
-	font-weight: 600;
-	color: var(--us-text);
-}
-
-#us-floating-container.us-roles-mode .us-role-search {
-	height: 36px;
-}
-
-#us-floating-container.us-roles-mode .us-role-list {
-	min-height: 240px;
-	max-height: min(420px, 45vh);
-}
-
-#us-floating-container.us-roles-mode .us-role {
-	padding: 7px 8px;
-	font-size: 13px;
-}
-
-#us-floating-container.us-roles-mode .us-role:has(input:checked) {
-	font-weight: 500;
-	background: var(--us-hover);
-}
-
-#us-floating-container.us-roles-mode .us-actions,
-#us-floating-container.us-roles-mode .us-edit-roles,
-#us-floating-container.us-roles-mode .us-switch-back,
-#us-floating-container.us-roles-mode .us-footer {
-	display: none;
-}
-
-/* Keep Save/Cancel visible however long the role list is */
-#us-floating-container.us-roles-mode .us-create-actions {
-	position: sticky;
-	bottom: -16px;
-	margin: 0 -16px -16px;
-	padding: 12px 16px;
-	background: var(--us-bg);
-	border-top: 1px solid var(--us-border);
-}
-
-#us-floating-container.us-roles-mode .us-btn {
-	height: 34px;
-	padding: 0 16px;
-	font-size: 13px;
-}
-
 /* ---------- Doctype access ---------- */
 
 #us-floating-container .us-access {
-	display: none;
+	gap: 10px;
+}
+
+/* DocType picker: a styled list under the field, instead of the browser's own menu */
+#us-floating-container .us-combo {
+	position: relative;
+	display: flex;
 	flex-direction: column;
-	gap: 12px;
-	flex: 1;
-	min-height: 0;
+}
+
+#us-floating-container .us-combo-list {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	right: 0;
+	z-index: 5;
+	display: flex;
+	flex-direction: column;
+	max-height: 264px;
 	overflow-y: auto;
-	padding: 14px 16px 16px;
+	padding: 4px;
+	border: 1px solid var(--us-border);
+	border-radius: 10px;
+	background: var(--us-bg);
+	box-shadow: var(--us-shadow);
 	scrollbar-width: thin;
 }
 
-#us-floating-container.us-access-mode .us-access {
+#us-floating-container .us-combo-option {
 	display: flex;
-}
-
-#us-floating-container.us-access-mode .us-browse,
-#us-floating-container.us-access-mode .us-hints,
-#us-floating-container.us-access-mode .us-actions,
-#us-floating-container.us-access-mode .us-edit-roles,
-#us-floating-container.us-access-mode .us-switch-back,
-#us-floating-container.us-access-mode .us-footer {
-	display: none;
-}
-
-#us-floating-container.us-access-mode .us-card {
-	width: 680px;
-	/* Fixed height: searching or switching doctype must not make the popup jump */
-	height: min(760px, calc(100vh - 100px));
-	max-width: calc(100vw - 24px);
-}
-
-#us-floating-container .us-access .us-create-title {
-	font-size: 15px;
-}
-
-#us-floating-container .us-access-sub {
-	font-size: 12px;
+	align-items: center;
+	gap: 12px;
+	min-height: 34px;
+	padding: 0 10px;
+	border-radius: 7px;
+	font-size: 13px;
 	font-weight: 400;
+	color: var(--us-text);
+	cursor: pointer;
+}
+
+#us-floating-container .us-combo-option:hover,
+#us-floating-container .us-combo-option.is-active {
+	background: var(--us-hover);
+}
+
+#us-floating-container .us-combo-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+#us-floating-container .us-combo-name b {
+	font-weight: 600;
+}
+
+#us-floating-container .us-combo-meta {
+	flex-shrink: 0;
+	font-size: 11px;
 	color: var(--us-muted);
 }
 
-#us-floating-container .us-access .us-field {
+#us-floating-container .us-combo-empty {
+	padding: 10px;
 	font-size: 12px;
-}
-
-#us-floating-container .us-access-doctype {
-	height: 36px !important;
+	font-weight: 400;
+	color: var(--us-muted);
 }
 
 #us-floating-container .us-access-summary {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 8px;
 	padding: 10px 12px;
-	border-radius: 10px;
-	font-size: 12px;
-	background: var(--us-bg-subtle);
 	border: 1px solid var(--us-border);
+	border-radius: 9px;
+	background: var(--us-bg-subtle);
+	font-size: 12px;
 }
 
 #us-floating-container .us-access-summary:empty {
@@ -1382,26 +1381,23 @@
 }
 
 #us-floating-container .us-access-summary-title {
-	color: var(--us-muted);
+	font-weight: 500;
 }
 
 #us-floating-container .us-access-summary-title b {
-	color: var(--us-text);
+	font-weight: 600;
 }
 
 #us-floating-container .us-access-summary-row {
 	display: grid;
-	grid-template-columns: 58px minmax(0, 1fr);
+	grid-template-columns: 52px minmax(0, 1fr);
 	align-items: start;
-	gap: 8px;
+	gap: 10px;
 }
 
 #us-floating-container .us-access-summary-label {
-	padding-top: 3px;
-	font-size: 10px;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
+	padding-top: 2px;
+	font-size: 11px;
 	color: var(--us-muted);
 }
 
@@ -1416,114 +1412,25 @@
 }
 
 #us-floating-container .us-access-pill {
-	padding: 2px 8px;
-	border-radius: 99px;
+	padding: 1px 8px;
+	border-radius: 999px;
 	font-size: 11px;
 	font-weight: 500;
-	border: 1px solid transparent;
 }
 
 #us-floating-container .us-access-pill.is-yes {
-	color: #15803d;
-	background: rgba(21, 128, 61, 0.1);
+	background: var(--us-ok-bg);
+	color: var(--us-ok);
 }
 
 #us-floating-container .us-access-pill.is-no {
-	color: #b91c1c;
-	border: 1px dashed rgba(185, 28, 28, 0.45);
-}
-
-[data-theme="dark"] #us-floating-container .us-access-pill.is-yes {
-	color: #4ade80;
-	background: rgba(74, 222, 128, 0.12);
-}
-
-[data-theme="dark"] #us-floating-container .us-access-pill.is-no {
-	color: #f87171;
-	border-color: rgba(248, 113, 113, 0.45);
+	background: var(--us-bad-bg);
+	color: var(--us-bad);
 }
 
 #us-floating-container .us-access-none {
-	color: var(--us-muted);
 	padding-top: 2px;
-}
-
-#us-floating-container .us-access-roles {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-
-#us-floating-container .us-access-roles .us-group {
-	padding: 10px 2px 2px;
-}
-
-#us-floating-container .us-access-roles .us-group:first-child {
-	padding-top: 0;
-}
-
-#us-floating-container .us-access-role {
-	display: grid;
-	grid-template-columns: 128px minmax(0, 1fr);
-	align-items: center;
-	gap: 6px 10px;
-	padding: 7px 8px 7px 12px;
-	border: 1px solid var(--us-border);
-	border-radius: 8px;
-}
-
-#us-floating-container .us-access-role.is-mine {
-	background: var(--us-bg-subtle);
-}
-
-#us-floating-container .us-access-role-name {
-	font-weight: 600;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-#us-floating-container .us-access-rights {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 4px;
-}
-
-@media (max-width: 640px) {
-	#us-floating-container .us-access-role {
-		grid-template-columns: minmax(0, 1fr);
-	}
-}
-
-#us-floating-container .us-right {
-	height: 26px;
-	padding: 0 7px;
-	border-radius: 6px;
-	font-size: 12px;
 	color: var(--us-muted);
-	background: var(--us-bg);
-	border: 1px solid var(--us-border);
-}
-
-#us-floating-container .us-right:hover {
-	border-color: var(--us-muted);
-	color: var(--us-text);
-}
-
-#us-floating-container .us-right.is-on {
-	color: var(--us-accent-fg);
-	background: var(--us-accent);
-	border-color: var(--us-accent);
-}
-
-/* Unsaved: a blue ring, so you can see what Save will change */
-#us-floating-container .us-right.is-changed {
-	box-shadow: 0 0 0 2px #3b82f6;
-}
-
-#us-floating-container .us-right:disabled {
-	cursor: default;
-	opacity: 0.6;
 }
 
 #us-floating-container .us-access-tools {
@@ -1537,24 +1444,21 @@
 	min-width: 0;
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	height: 34px;
-	padding: 0 10px;
+	gap: 8px;
+	height: 36px;
+	padding: 0 12px;
+	border-radius: 9px;
+	background: var(--us-bg-subtle);
 	color: var(--us-muted);
-	background: var(--control-bg, var(--us-bg-subtle));
-	border: 1px solid transparent;
-	border-radius: 8px;
 }
 
 #us-floating-container .us-access-search:focus-within {
-	background: var(--us-bg);
-	border-color: var(--us-border);
 	box-shadow: 0 0 0 3px var(--us-hover);
 }
 
 #us-floating-container .us-access-search svg {
-	width: 14px;
-	height: 14px;
+	width: 15px;
+	height: 15px;
 }
 
 #us-floating-container .us-access-role-search {
@@ -1571,10 +1475,24 @@
 	box-shadow: none;
 }
 
+#us-floating-container .us-access-more {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+	margin: 0;
+	font-size: 12px;
+	color: var(--us-label);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+/* "Add role" suggestions for the search */
 #us-floating-container .us-access-suggest {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 4px;
+	align-items: center;
+	gap: 6px;
 }
 
 #us-floating-container .us-access-suggest:empty {
@@ -1582,8 +1500,11 @@
 }
 
 #us-floating-container .us-access-suggest .us-group {
-	flex-basis: 100%;
-	padding: 0 0 2px;
+	padding: 0 2px 0 0;
+	font-size: 11px;
+	font-weight: 400;
+	letter-spacing: 0;
+	text-transform: none;
 }
 
 #us-floating-container .us-access-suggest-item {
@@ -1591,11 +1512,12 @@
 	align-items: center;
 	gap: 4px;
 	height: 26px;
-	padding: 0 9px 0 6px;
-	border-radius: 6px;
+	padding: 0 10px;
+	border: 1px dashed var(--us-border-strong);
+	border-radius: 999px;
 	font-size: 12px;
+	font-weight: 500;
 	color: var(--us-text);
-	border: 1px dashed var(--us-muted);
 }
 
 #us-floating-container .us-access-suggest-item:hover,
@@ -1605,52 +1527,152 @@
 }
 
 #us-floating-container .us-access-suggest-item svg {
-	width: 12px;
-	height: 12px;
+	width: 11px;
+	height: 11px;
+}
+
+/* One row per role: its name, then its rights as buttons */
+#us-floating-container .us-access-roles {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 6px;
+	border: 1px solid var(--us-border);
+	border-radius: 9px;
+}
+
+#us-floating-container .us-access-roles .us-empty {
+	padding: 20px 12px;
+}
+
+#us-floating-container .us-access-roles .us-group {
+	padding: 10px 6px 2px;
+}
+
+#us-floating-container .us-access-roles .us-group:first-child {
+	padding-top: 4px;
+}
+
+#us-floating-container .us-access-role {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 10px 12px 12px;
+	border: 1px solid var(--us-border);
+	border-radius: 10px;
+}
+
+#us-floating-container .us-access-role.is-mine {
+	background: var(--us-bg-subtle);
+	border-color: transparent;
 }
 
 #us-floating-container .us-access-role.is-new {
-	border-color: #3b82f6;
+	box-shadow: inset 0 0 0 1px #93b4f5;
 }
 
-#us-floating-container .us-access-more {
+#us-floating-container .us-access-role-name {
+	font-size: 13px;
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Rights as soft chips: an outline when off, light green when on. Equal columns, so the usual
+   8 always share one line whatever the window width or scrollbar; "All rights" wraps evenly. */
+#us-floating-container .us-access-rights {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(max(56px, calc((100% - 42px) / 8)), 1fr));
+	gap: 6px;
+}
+
+#us-floating-container .us-right {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	min-width: 0;
+	height: 30px;
+	padding: 0 6px;
+	border: 1px solid var(--us-border-strong);
+	border-radius: 999px;
+	background: var(--us-bg);
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--us-label);
+	transition: background 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+
+#us-floating-container .us-right:hover {
+	border-color: var(--us-muted);
+	color: var(--us-text);
+	transform: translateY(-1px);
+}
+
+#us-floating-container .us-right.is-on {
+	border-color: var(--us-ok-border);
+	background: var(--us-ok-strong);
+	color: var(--us-ok);
+	font-weight: 600;
+	box-shadow: 0 1px 2px rgba(22, 101, 52, 0.12), 0 0 0 3px var(--us-ok-bg);
+}
+
+#us-floating-container .us-right.is-on:hover {
+	border-color: var(--us-ok);
+}
+
+/* Unsaved: a blue ring, so you can see what Save will change */
+#us-floating-container .us-right.is-changed,
+#us-floating-container .us-right.is-on.is-changed {
+	box-shadow: 0 0 0 2px #93b4f5;
+}
+
+/* Locked rows (All, Desk User…): still readable, clearly not clickable */
+#us-floating-container .us-right:disabled {
+	cursor: default;
+	opacity: 0.55;
+	box-shadow: none;
+	transform: none;
+}
+
+#us-floating-container .us-right:disabled:hover {
+	border-color: var(--us-border-strong);
+	color: var(--us-label);
+}
+
+#us-floating-container .us-right.is-on:disabled:hover {
+	border-color: var(--us-ok-border);
+	color: var(--us-ok);
+}
+
+/* Bottom bar, left side: unsaved count, then the link to Role Permission Manager */
+#us-floating-container .us-access-foot {
+	flex: 1;
+	min-width: 0;
 	display: flex;
 	align-items: center;
-	gap: 5px;
-	margin: 0;
-	font-size: 12px;
-	color: var(--us-muted);
-	white-space: nowrap;
-	cursor: pointer;
+	gap: 12px;
+}
+
+#us-floating-container .us-access-foot .us-access-changes {
+	flex: 0 1 auto;
+}
+
+#us-floating-container .us-access-foot .us-access-changes:empty {
+	display: none;
 }
 
 #us-floating-container .us-access-advanced {
-	font-size: 11px;
-	color: var(--us-muted);
-	text-decoration: underline;
-}
-
-#us-floating-container .us-access-actions {
-	position: sticky;
-	bottom: -16px;
-	align-items: center;
-	/* auto top margin keeps the bar at the bottom when the role list is short */
-	margin: auto -16px -16px;
-	padding: 12px 16px;
-	background: var(--us-bg);
-	border-top: 1px solid var(--us-border);
-}
-
-#us-floating-container .us-access-changes {
-	margin-right: auto;
 	font-size: 12px;
-	color: #2563eb;
+	color: var(--us-label);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	white-space: nowrap;
 }
 
-#us-floating-container .us-access-actions .us-btn {
-	height: 34px;
-	padding: 0 16px;
-	font-size: 13px;
+#us-floating-container .us-access-advanced:hover {
+	color: var(--us-text);
 }
 
 /* "Fix access" link inside Frappe's alert */

@@ -1,5 +1,7 @@
 # * user_switcher/api.py
 
+import re
+
 import frappe
 from frappe import _
 from frappe.sessions import delete_session
@@ -22,6 +24,31 @@ def _is_enabled() -> bool:
 def _escape_like(txt: str) -> str:
 	"""Escape `\\`, `%` and `_` so user text matches literally inside a LIKE filter."""
 	return txt.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _match_rank(text: str, query: str) -> int:
+	"""Frappe-style search rank: 0 = no match, lower = better.
+
+	Typed words may match the starts of words in any order ("inv sal" -> Sales Invoice), the
+	letters may spell the initials ("si" -> Sales Invoice), and a plain substring still matches.
+	"""
+	q = (query or "").strip().casefold()
+	if not q:
+		return 1
+	t = (text or "").casefold()
+	words = [w for w in re.split(r"[\s._\-/]+", t) if w]
+	parts = q.split()
+	if t == q:
+		return 1
+	if t.startswith(q):
+		return 2
+	if len(parts) == 1 and len(q) > 1 and "".join(w[0] for w in words).startswith(q):
+		return 3
+	if all(any(w.startswith(p) for w in words) for p in parts):
+		return 4
+	if q in t:
+		return 5
+	return 0
 
 
 def _blocked_targets(real_user: str) -> list[str]:
@@ -293,6 +320,28 @@ def get_assignable_roles():
 	)
 
 
+@frappe.whitelist()
+def get_role_profiles() -> list[dict]:
+	"""Role Profiles with their assignable roles, for one-click role sets on the test-user form.
+
+	Returns:
+		`[{"name": profile, "roles": [role, ...]}, ...]`, profiles without any assignable role left out.
+	"""
+	if not _can_switch():
+		_deny(_("Not permitted"), "list_role_profiles")
+	rows = frappe.get_all(
+		"Has Role",
+		filters={"parenttype": "Role Profile", "role": ["not in", AUTOMATIC_ROLES]},
+		fields=["parent", "role"],
+		order_by="parent asc, idx asc",
+		ignore_permissions=True,
+	)
+	profiles = {}
+	for row in rows:
+		profiles.setdefault(row.parent, []).append(row.role)
+	return [{"name": name, "roles": roles} for name, roles in profiles.items()]
+
+
 @frappe.whitelist(methods=["POST"])
 def create_test_user(full_name: str, email: str, roles: list | str | None = None, switch: int = 1):
 	"""Create an enabled test user with the given roles, optionally switching into it.
@@ -461,14 +510,26 @@ def _level_zero_rules(doctype: str) -> list[dict]:
 
 
 @frappe.whitelist()
-def search_doctypes(txt: str | None = None) -> list[str]:
-	"""DocTypes whose access can be managed, matching `txt`."""
+def search_doctypes(txt: str | None = None) -> list[dict]:
+	"""DocTypes whose access can be managed, matching `txt` the way Frappe's search bar does.
+
+	Returns:
+		Up to 12 `{"name", "module"}` dicts, best match first (see `_match_rank`), then shortest name.
+	"""
 	if not _can_switch():
 		_deny(_("Not permitted"), "search_doctypes")
-	filters = [["istable", "=", 0], ["name", "not in", BLOCKED_DOCTYPES]]
-	if txt:
-		filters.append(["name", "like", f"%{_escape_like(txt)}%"])
-	return frappe.get_all("DocType", filters=filters, pluck="name", order_by="name asc", limit=20, ignore_permissions=True)
+	rows = frappe.get_all(
+		"DocType",
+		filters=[["istable", "=", 0], ["name", "not in", BLOCKED_DOCTYPES]],
+		fields=["name", "module"],
+		order_by="name asc",
+		ignore_permissions=True,
+	)
+	# "inv sal" or "si" can't be expressed as one LIKE, so rank every doctype here (a site has ~1-2k)
+	ranked = [(_match_rank(row.name, txt), row) for row in rows]
+	ranked = [(rank, row) for rank, row in ranked if rank]
+	ranked.sort(key=lambda x: (x[0], len(x[1].name), x[1].name))
+	return [row for _rank, row in ranked[:12]]
 
 
 @frappe.whitelist()
