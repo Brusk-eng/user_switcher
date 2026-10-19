@@ -7,7 +7,7 @@ from frappe import _
 from frappe.sessions import delete_session
 from frappe.utils import validate_email_address
 
-ALLOWED_ROLES = {"System Manager"}
+ALLOWED_ROLES = set()  # Administrator only (_can_switch allows Administrator explicitly)
 AUTOMATIC_ROLES = ["All", "Guest", "Administrator", "Desk User"]
 
 
