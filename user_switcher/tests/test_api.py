@@ -11,17 +11,19 @@ class TestUserSwitcherAccess(IntegrationTestCase):
 	def test_escape_like(self):
 		self.assertEqual(api._escape_like("a%b_c"), "a\\%b\\_c")
 
-	def test_disabled_without_developer_mode(self):
-		with patch.object(frappe.local, "conf", frappe._dict(developer_mode=0)):
+	def test_disabled_without_user_switcher_enabled(self):
+		with patch.object(frappe.local, "conf", frappe._dict(developer_mode=1)):
+			self.assertFalse(api._can_switch("Administrator"))
+		with patch.object(frappe.local, "conf", frappe._dict(developer_mode=0, user_switcher_enabled=0)):
 			self.assertFalse(api._can_switch("Administrator"))
 
 	def test_guest_never_allowed(self):
-		with patch.object(frappe.local, "conf", frappe._dict(developer_mode=1, user_switcher_enabled=1)):
+		with patch.object(frappe.local, "conf", frappe._dict(user_switcher_enabled=1)):
 			self.assertFalse(api._can_switch("Guest"))
 			self.assertTrue(api._can_switch("Administrator"))
 
 	def test_system_manager_cannot_list_administrator(self):
-		with patch.object(frappe.local, "conf", frappe._dict(developer_mode=1, user_switcher_enabled=1)):
+		with patch.object(frappe.local, "conf", frappe._dict(user_switcher_enabled=1)):
 			names = [u.name for u in api._find_users("test@example.com", None, None, 100)]
 		self.assertNotIn("Administrator", names)
 
@@ -72,7 +74,7 @@ class TestBlockedTargets(IntegrationTestCase):
 class TestManageRoles(IntegrationTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
-		self.conf = patch.object(frappe.local, "conf", frappe._dict(developer_mode=1, user_switcher_enabled=1))
+		self.conf = patch.object(frappe.local, "conf", frappe._dict(user_switcher_enabled=1))
 		self.conf.start()
 		self.addCleanup(self.conf.stop)
 
@@ -107,7 +109,7 @@ class TestManageRoles(IntegrationTestCase):
 class TestSwitchHardening(IntegrationTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
-		self.conf = patch.object(frappe.local, "conf", frappe._dict(developer_mode=1, user_switcher_enabled=1))
+		self.conf = patch.object(frappe.local, "conf", frappe._dict(user_switcher_enabled=1))
 		self.conf.start()
 		self.addCleanup(self.conf.stop)
 
@@ -144,15 +146,15 @@ class TestAccessGates(IntegrationTestCase):
 		frappe.session["data"] = frappe._dict(impersonated_by=user)
 		self.addCleanup(frappe.session.__setitem__, "data", previous)
 
-	def test_developer_mode_alone_is_not_enough(self):
+	def test_user_switcher_enabled_controls_access(self):
 		with patch.object(frappe.local, "conf", frappe._dict(developer_mode=1)):
 			self.assertFalse(api._can_switch("Administrator"))
-		with patch.object(frappe.local, "conf", frappe._dict(user_switcher_enabled=1)):
-			self.assertFalse(api._can_switch("Administrator"))
+		with patch.object(frappe.local, "conf", frappe._dict(developer_mode=0, user_switcher_enabled=1)):
+			self.assertTrue(api._can_switch("Administrator"))
 
 	def test_disabled_system_manager_cannot_switch(self):
 		user = self._manager("us_gate_sm@example.com")
-		with patch.object(frappe.local, "conf", frappe._dict(developer_mode=1, user_switcher_enabled=1)):
+		with patch.object(frappe.local, "conf", frappe._dict(user_switcher_enabled=1)):
 			self.assertTrue(api._can_switch(user))
 			frappe.db.set_value("User", user, "enabled", 0)
 			frappe.clear_cache(user=user)
@@ -164,7 +166,7 @@ class TestAccessGates(IntegrationTestCase):
 		frappe.clear_cache(user=user)
 		self._impersonated_by(user)
 		with (
-			patch.object(frappe.local, "conf", frappe._dict(developer_mode=1, user_switcher_enabled=1)),
+			patch.object(frappe.local, "conf", frappe._dict(user_switcher_enabled=1)),
 			patch.object(api, "delete_session") as delete,
 			# the hook commits so the delete survives the error rollback; never let a test do that for real
 			patch.object(frappe.db, "commit") as commit,
@@ -176,7 +178,7 @@ class TestAccessGates(IntegrationTestCase):
 	def test_valid_impersonated_session_is_kept(self):
 		self._impersonated_by("Administrator")
 		with (
-			patch.object(frappe.local, "conf", frappe._dict(developer_mode=1, user_switcher_enabled=1)),
+			patch.object(frappe.local, "conf", frappe._dict(user_switcher_enabled=1)),
 			patch.object(api, "delete_session") as delete,
 		):
 			api.end_orphaned_session()
@@ -190,7 +192,7 @@ class TestAccessGates(IntegrationTestCase):
 	def test_denied_request_is_logged(self):
 		logger = MagicMock()
 		with (
-			patch.object(frappe.local, "conf", frappe._dict(developer_mode=0)),
+			patch.object(frappe.local, "conf", frappe._dict()),
 			patch.object(frappe, "logger", return_value=logger),
 		):
 			self.assertRaises(frappe.PermissionError, api.switch_to_user, "someone@example.com")
@@ -203,7 +205,7 @@ class TestDoctypeAccess(IntegrationTestCase):
 
 	def setUp(self):
 		frappe.set_user("Administrator")
-		self.conf = patch.object(frappe.local, "conf", frappe._dict(frappe.local.conf, developer_mode=1, user_switcher_enabled=1))
+		self.conf = patch.object(frappe.local, "conf", frappe._dict(frappe.local.conf, user_switcher_enabled=1))
 		self.conf.start()
 		self.had_custom = bool(frappe.db.exists("Custom DocPerm", {"parent": self.DOCTYPE}))
 		if not frappe.db.exists("Role", "US Access Tester"):
@@ -221,7 +223,7 @@ class TestDoctypeAccess(IntegrationTestCase):
 
 	def test_blocked_without_switcher(self):
 		self.conf.stop()
-		with patch.object(frappe.local, "conf", frappe._dict(developer_mode=0)):
+		with patch.object(frappe.local, "conf", frappe._dict()):
 			self.assertRaises(frappe.PermissionError, api.get_doctype_access, self.DOCTYPE)
 		self.conf.start()
 
