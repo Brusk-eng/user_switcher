@@ -845,6 +845,7 @@
 			const title = uses ? t("Switched {0} times", [uses]) : "";
 			const $item = $(`
 				<div class="us-item" role="option" tabindex="-1" title="${esc(drag ? [title, t("Drag to reorder")].filter(Boolean).join(" · ") : title)}">
+					${key}
 					${avatar(u)}
 					<div class="us-item-text">
 						<span class="us-item-name"><span class="us-item-name-text">${esc(display_name(u))}</span>${now}${website}</span>
@@ -852,7 +853,6 @@
 					</div>
 					<button class="us-pin ${pinned ? "is-pinned" : ""}" title="${pinned ? t("Unpin") : t("Pin to top")}"
 						aria-label="${pinned ? t("Unpin") : t("Pin to top")}" aria-pressed="${pinned}">${ICONS.star}</button>
-					${key}
 				</div>
 			`)
 				.attr({ "data-index": index, "data-name": u.name })
