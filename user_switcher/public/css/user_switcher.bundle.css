@@ -505,10 +505,10 @@
 	color: var(--us-muted);
 }
 
-/* Fixed columns so every row lines up: avatar | name + email | star | number */
+/* Fixed columns so every row lines up: number | avatar | name + email | star */
 #us-floating-container .us-item {
 	display: grid;
-	grid-template-columns: 32px minmax(0, 1fr) 24px 24px;
+	grid-template-columns: 24px 32px minmax(0, 1fr) 24px;
 	align-items: center;
 	column-gap: 12px;
 	min-height: 48px;
@@ -595,6 +595,7 @@
 	min-width: 22px;
 	margin: 0;
 	text-align: center;
+	font-weight: 700;
 }
 
 #us-floating-container .us-num--none {
